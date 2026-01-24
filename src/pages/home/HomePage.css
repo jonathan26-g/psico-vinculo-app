@@ -1,0 +1,112 @@
+/* src/pages/home/HomePage.css */
+
+.page-background {
+  background-color: #F8F9FA; /* Fondo gris muy suave */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  padding-top: 100px; /* IMPORTANTE: Espacio para que el Navbar no tape el título */
+}
+
+/* Títulos */
+.hero-title {
+  color: #1F2937;
+  font-weight: 800;
+  font-size: 3.5rem;
+  line-height: 1.2;
+}
+
+.text-highlight {
+  color: #2D8A76; /* Tu verde corporativo */
+}
+
+/* Tarjetas de Valores (Blancas) */
+.value-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  height: 100%;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.value-card:hover {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  transform: translateY(-5px);
+}
+
+.value-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #2D8A76;
+}
+
+/* Tarjetas de Roles (Colores Pastel) */
+.role-card {
+  border: none;
+  border-radius: 16px;
+  padding: 2rem;
+  height: 100%;
+  transition: transform 0.2s;
+}
+.role-card:hover { transform: scale(1.03); }
+
+/* Colores de fondo específicos */
+.bg-role-user { background-color: #E6F4F1; color: #1f4d42; }
+.bg-role-student { background-color: #EBF5FF; color: #1e40af; }
+.bg-role-supervisor { background-color: #F3E8FF; color: #6b21a8; }
+.bg-role-university { background-color: #FEF3C7; color: #92400e; }
+.bg-role-admin { background-color: #F3F4F6; color: #374151; }
+
+/* Botones */
+.btn-primary-custom {
+  background-color: #2D8A76 !important; /* !important fuerza el color sobre bootstrap */
+  border-color: #2D8A76 !important;
+  color: white !important;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn-outline-custom {
+  background-color: transparent;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+
+/* Estilos para la nueva sección "Por qué Psico-Vínculo" */
+
+.color-dark-green {
+  color: #1a3a3a; /* Un tono más oscuro del verde para párrafos énfasis */
+}
+
+.benefits-card {
+  /* Sombras suaves pero profundas como en la imagen */
+  box-shadow: 0 20px 40px rgba(0,0,0,0.05) !important;
+  border: 1px solid #f0f0f0 !important;
+}
+
+.benefits-card ul li span:first-child {
+  /* Círculo para el check si quieres que se vea más pro */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: #e6f4f1;
+  border-radius: 50%;
+  font-size: 0.8rem !important;
+  margin-top: 4px;
+}
+
+/* Ajuste responsivo para el título en pantallas medianas */
+@media (max-width: 991px) {
+  .hero-title.fs-1 {
+    font-size: 2.5rem !important;
+  }
+}
