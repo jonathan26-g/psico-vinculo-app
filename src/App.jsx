@@ -12,7 +12,9 @@ import PatientRegister from './pages/auth/PatientRegister';
 
 import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
-
+import ProfilePage from './pages/dashboard/ProfilePage';
+import InstitutionRegister from './pages/auth/InstitutionRegister';
+import ChatPage from './pages/chat/ChatPage';
 
 
 function App() {
@@ -36,7 +38,13 @@ function App() {
 
           {/* NUEVA RUTA DEL PANEL DE CONTROL */}
           <Route path="/dashboard" element={<DashboardPage />} />
-       
+
+          
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/register/institution" element={<InstitutionRegister />} />
+
+          {/* 👇 ESTA ERA LA QUE TE DABA ERROR DEL CHAT */}
+          <Route path="/chat" element={<ChatPage />} />
         </Routes>
       </div>
       <FooterC />

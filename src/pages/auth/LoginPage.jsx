@@ -11,33 +11,46 @@ const LoginPage = () => {
   // Hook para navegar a otra página automáticamente
   const navigate = useNavigate();
 
+ // ... imports
+  // Asegúrate de importar EMAILS_ALUMNOS_PERMITIDOS arriba
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    // 1. Verificamos si es un Alumno (buscando en mockData)
+    // 1. ¿ES ALUMNO? (Buscamos en la lista Mock)
     const esAlumno = EMAILS_ALUMNOS_PERMITIDOS.find(u => u.email === email);
 
+    // 2. ¿ES TUTOR? (Simulación rápida para probar)
+    // En el futuro esto vendrá de una base de datos real
+    const esTutor = email.includes('@tutor.unt.edu.ar'); 
+
+    // 3. ¿ES INSTITUCIÓN? (Simulación rápida)
+    const esInstitucion = email.includes('@admin.unt.edu.ar');
+
     if (esAlumno) {
-      // ✅ CASO 1: ES ALUMNO
-      // Guardamos su nombre real (ej: "Juan Pérez") en la memoria
       localStorage.setItem('usuarioNombre', esAlumno.nombre); 
-      
-      // Nos vamos al dashboard sin alertas molestas
+      localStorage.setItem('usuarioRol', 'alumno'); // ROL ALUMNO
       navigate('/dashboard'); 
 
+    } else if (esTutor) {
+      localStorage.setItem('usuarioNombre', "Profesor Tutor"); 
+      localStorage.setItem('usuarioRol', 'tutor'); // ROL TUTOR
+      navigate('/dashboard');
+
+    } else if (esInstitucion) {
+      localStorage.setItem('usuarioNombre', "Universidad Nacional (UNT)"); 
+      localStorage.setItem('usuarioRol', 'institucion'); // ROL INSTITUCIÓN
+      navigate('/dashboard');
+
     } else {
-      // ✅ CASO 2: ES PACIENTE / USUARIO
-      // Como no tenemos base de datos de nombres aún, inventamos el nombre usando el email.
-      // Ejemplo: si el mail es "pepe@gmail.com", tomamos "pepe".
+      // Si no es nada de lo anterior, es PACIENTE
       const nombreUsuario = email.split('@')[0]; 
-      
       localStorage.setItem('usuarioNombre', nombreUsuario);
-      
+      localStorage.setItem('usuarioRol', 'paciente'); // ROL PACIENTE
       navigate('/dashboard');
     }
   };
-
   return (
     <Container className="py-5 mt-5" style={{ maxWidth: '500px' }}>
       <Card className="shadow border-0 p-4">
