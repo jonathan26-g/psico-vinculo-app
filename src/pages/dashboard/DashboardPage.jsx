@@ -9,6 +9,7 @@ const DashboardPage = () => {
 
   // 1. DICCIONARIO DE CONTENIDOS POR ROL 📚
   // Aquí definimos qué ve cada tipo de usuario. ¡Es muy fácil de editar!
+  // ... dentro de DashboardPage
   const roleContent = {
     paciente: {
       chatTitle: "Sala de Vínculo",
@@ -22,10 +23,11 @@ const DashboardPage = () => {
       chatBtn: "Ver Pacientes",
       profileBtn: "Mi Ficha Académica"
     },
+    // 👇 AQUÍ ESTÁ EL CAMBIO IMPORTANTE PARA EL TUTOR
     tutor: {
-      chatTitle: "Supervisión",
-      chatText: "Monitorea el desempeño de tus alumnos y asiste en casos complejos.",
-      chatBtn: "Panel de Supervisión",
+      chatTitle: "Centro de Supervisión", 
+      chatText: "Audita los chats de los alumnos, revisa intervenciones y califica el desempeño.",
+      chatBtn: "Auditar Casos", 
       profileBtn: "Perfil Profesional"
     },
     institucion: {

@@ -23,7 +23,8 @@ const LoginPage = () => {
 
     // 2. ¿ES TUTOR? (Simulación rápida para probar)
     // En el futuro esto vendrá de una base de datos real
-    const esTutor = email.includes('@tutor.unt.edu.ar'); 
+    // Aceptamos si dice "tutor" O si dice "profesor" (para que te funcione a ti)
+    const esTutor = email.includes('tutor') || email.includes('profesor'); 
 
     // 3. ¿ES INSTITUCIÓN? (Simulación rápida)
     const esInstitucion = email.includes('@admin.unt.edu.ar');
