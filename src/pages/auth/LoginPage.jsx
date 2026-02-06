@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { EMAILS_ALUMNOS_PERMITIDOS } from '../../data/mockData';
+// IMPORT UNIFICADO Y CORRECTO
+import { EMAILS_ALUMNOS_PERMITIDOS, SUPERVISORES_PERMITIDOS, USUARIOS_INSTITUCIONALES } from '../../data/mockData';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -12,28 +13,45 @@ const LoginPage = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     
-    // Lógica de roles (Sin cambios)
+    // 1. Valores por defecto (Paciente)
     let role = 'paciente';
     let name = email.split('@')[0];
+    let uniId = null; // Variable para guardar el ID de la universidad
 
+    // 2. BUSQUEDA EN LAS LISTAS DE DATOS (MOCK DATA)
     const foundStudent = EMAILS_ALUMNOS_PERMITIDOS.find(u => u.email === email);
+    const foundSupervisor = SUPERVISORES_PERMITIDOS.find(u => u.email === email);
+    const foundInstitution = USUARIOS_INSTITUCIONALES.find(u => u.email === email);
     
+    // 3. ASIGNACIÓN DE ROLES
     if (foundStudent) {
       role = 'alumno';
       name = foundStudent.nombre;
+      uniId = foundStudent.universidadId;
     } 
-    else if (email.includes('profesor') || email.includes('tutor')) {
+    else if (foundSupervisor) {
       role = 'tutor';
       name = 'Profesor Supervisor';
+      // Los supervisores pueden tener varias universidades, por ahora lo dejamos genérico
     } 
-    else if (email.includes('admin') || email.includes('rector') || email.includes('universidad')) {
+    else if (foundInstitution) {
       role = 'institucion';
-      name = 'Universidad Nacional (UNT)';
+      name = foundInstitution.nombre;
+      uniId = foundInstitution.universidadId; // ¡Aquí capturamos si es UNT (1), UNSTA (2), etc!
     }
 
+    // 4. GUARDADO EN MEMORIA (LocalStorage)
     localStorage.setItem('usuarioRol', role);
     localStorage.setItem('usuarioNombre', name);
+    
+    // Si tenemos ID de universidad, lo guardamos. (Sirve para mostrar logos específicos después)
+    if (uniId) {
+      localStorage.setItem('usuarioUniversidadId', uniId);
+    } else {
+      localStorage.removeItem('usuarioUniversidadId'); // Limpiar si entra un paciente
+    }
 
+    // 5. REDIRECCIÓN
     switch(role) {
       case 'alumno': navigate('/dashboard/alumno'); break;
       case 'tutor': navigate('/dashboard/tutor'); break;
@@ -43,18 +61,13 @@ const LoginPage = () => {
   };
 
   return (
-    // CAMBIO 1: Usamos 'min-vh-100' para que crezca si hace falta en celular
-    // Agregamos 'py-5' para dar aire arriba y abajo en móviles
     <Container fluid className="min-vh-100 d-flex flex-column"> 
       <Row className="flex-grow-1">
         
         {/* COLUMNA IZQUIERDA: MARCO LEGAL */}
-        {/* En móvil orden-2 (abajo), en PC orden-1 (izquierda) si quisieras cambiar el orden visual */}
-        {/* CAMBIO 2: Padding responsivo. 'p-4' en móvil, 'p-md-5' en PC */}
         <Col md={7} className="bg-primary text-white p-4 p-md-5 d-flex flex-column justify-content-center">
           
           <div className="mb-4">
-            {/* Títulos más chicos en celular */}
             <h1 className="fw-bold display-5 display-md-4">👐 Psico-Vínculo</h1>
             <p className="lead opacity-75 fs-6 fs-md-4">Dispositivo de Formación Profesional y Escucha Activa</p>
           </div>
@@ -84,8 +97,6 @@ const LoginPage = () => {
           </Alert>
 
           <div className="mt-3 small opacity-75 d-none d-md-block">
-             {/* Ocultamos detalles extra en celular muy pequeño si quieres (d-none d-md-block), 
-                 o los dejamos visibles pero con letra chica */}
             <p className="mb-1" style={{ fontSize: '0.8rem' }}>
               <strong>⚖️ Marco Legal:</strong> Ley 26.657 y normativas universitarias.
             </p>
@@ -97,7 +108,6 @@ const LoginPage = () => {
         </Col>
 
         {/* COLUMNA DERECHA: LOGIN */}
-        {/* CAMBIO 3: Fondo blanco o gris claro, padding ajustado */}
         <Col md={5} className="bg-light d-flex align-items-center justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '400px' }}>
             <div className="text-center mb-4">

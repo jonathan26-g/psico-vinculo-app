@@ -1,213 +1,300 @@
-import React from 'react';
-import { Container, Row, Col, Card, Button, ProgressBar } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = () => {
-  const userName = localStorage.getItem('usuarioNombre') || "Invitado";
-  const userRole = localStorage.getItem('usuarioRol') || 'paciente';
+  const navigate = useNavigate();
+  const [user, setUser] = useState({ name: '', role: '', uniId: null });
 
-  // --- 1. VISTA EXCLUSIVA: UNIVERSIDAD / INSTITUCIÓN 🏛️ ---
-  if (userRole === 'institucion') {
-    return (
-      <Container className="py-5 mt-5">
-        <div className="mb-5 border-bottom pb-4 d-flex justify-content-between align-items-end">
-          <div>
-            <h6 className="text-uppercase text-muted fw-bold ls-2">Panel Administrativo</h6>
-            <h1 className="fw-bold text-dark mb-0">Universidad Nacional (UNT)</h1>
-          </div>
-          <div className="text-end d-none d-md-block">
-            <small className="text-muted">Última actualización: Hoy, 09:41 AM</small>
-          </div>
-        </div>
+  // 1. Cargar datos del usuario al entrar
+  useEffect(() => {
+    const name = localStorage.getItem('usuarioNombre');
+    const role = localStorage.getItem('usuarioRol');
+    const uniId = localStorage.getItem('usuarioUniversidadId');
 
-        {/* FILA 1: TARJETAS DE NÚMEROS (KPIs) */}
-        <Row className="g-4 mb-5">
-          <Col md={3}>
-            <Card className="shadow-sm border-0 h-100 border-start border-4 border-primary">
-              <Card.Body>
-                <div className="text-muted small fw-bold text-uppercase">Total Alumnos</div>
-                <div className="display-6 fw-bold text-dark my-2">142</div>
-                <small className="text-success">↑ 12 nuevos este mes</small>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="shadow-sm border-0 h-100 border-start border-4 border-success">
-              <Card.Body>
-                <div className="text-muted small fw-bold text-uppercase">Casos Activos</div>
-                <div className="display-6 fw-bold text-dark my-2">85</div>
-                <small className="text-muted">Pacientes en tratamiento</small>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-             <Card className="shadow-sm border-0 h-100 border-start border-4 border-warning">
-              <Card.Body>
-                <div className="text-muted small fw-bold text-uppercase">Supervisores</div>
-                <div className="display-6 fw-bold text-dark my-2">12</div>
-                <small className="text-dark">Monitoreando sesiones</small>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-             <Card className="shadow-sm border-0 h-100 border-start border-4 border-danger">
-              <Card.Body>
-                <div className="text-muted small fw-bold text-uppercase">Alertas de Riesgo</div>
-                <div className="display-6 fw-bold text-danger my-2">3</div>
-                <small className="text-danger fw-bold">Requieren atención</small>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* FILA 2: GRÁFICOS SIMULADOS Y ACCIONES */}
-        <Row className="g-4">
-          <Col lg={8}>
-            <Card className="shadow-sm border-0 h-100 p-4">
-              <Card.Title className="fw-bold mb-4">Actividad Semestral</Card.Title>
-              {/* Simulamos un gráfico de barras con Progress Bars de Bootstrap */}
-              <div className="d-flex flex-column gap-3">
-                <div>
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span>Enero</span> <span>45 Sesiones</span>
-                  </div>
-                  <ProgressBar variant="info" now={45} style={{height: '10px'}} />
-                </div>
-                <div>
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span>Febrero</span> <span>60 Sesiones</span>
-                  </div>
-                  <ProgressBar variant="info" now={60} style={{height: '10px'}} />
-                </div>
-                <div>
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span>Marzo (Proyección)</span> <span>80 Sesiones</span>
-                  </div>
-                  <ProgressBar variant="primary" now={80} style={{height: '10px'}} />
-                </div>
-              </div>
-              <div className="mt-4 text-center">
-                 <Button variant="outline-primary" size="sm">Descargar Reporte PDF</Button>
-              </div>
-            </Card>
-          </Col>
-
-          <Col lg={4}>
-            <Card className="shadow-sm border-0 h-100 p-3 bg-light">
-              <Card.Title className="fw-bold mb-3">Accesos Rápidos</Card.Title>
-              <div className="d-grid gap-2">
-                <Button variant="white" className="text-start shadow-sm border">
-                  🎓 Gestionar Alumnos
-                </Button>
-                <Button variant="white" className="text-start shadow-sm border">
-                  👨‍🏫 Gestionar Tutores
-                </Button>
-                <Button variant="white" className="text-start shadow-sm border">
-                  ⚠️ Ver Reportes de Riesgo
-                </Button>
-                <Link to="/profile">
-                  <Button variant="outline-dark" className="w-100 mt-2">
-                    Configuración Institucional
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-    );
-  }
-
-  // --- 2. VISTA ESTÁNDAR (Paciente, Alumno, Tutor) ---
-  // (Esta es la que ya tenías, solo la metemos en el 'else' implícito)
-
-  const roleContent = {
-    paciente: {
-      chatTitle: "Sala de Vínculo",
-      chatText: "Ingresa al chat para hablar con un estudiante o supervisor asignado.",
-      chatBtn: "Entrar al Chat",
-      profileBtn: "Ver Mis Datos"
-    },
-    alumno: {
-      chatTitle: "Mis Pacientes",
-      chatText: "Gestiona tus casos asignados y revisa las notas de sesión.",
-      chatBtn: "Ver Pacientes",
-      profileBtn: "Mi Ficha Académica"
-    },
-    tutor: {
-      chatTitle: "Centro de Supervisión",
-      chatText: "Audita los chats de los alumnos, revisa intervenciones y califica el desempeño.",
-      chatBtn: "Auditar Casos",
-      profileBtn: "Perfil Profesional"
+    if (!name) {
+      navigate('/login'); // Si no hay nadie, mandar al login
+    } else {
+      setUser({ name, role, uniId });
     }
-  };
+  }, [navigate]);
 
-  const content = roleContent[userRole] || roleContent.paciente;
-
-  return (
-    <Container className="py-5 mt-5">
-      <div className="mb-5 border-bottom pb-4">
-        <h1 className="fw-bold text-dark">
-          Hola, <span className="text-success" style={{textTransform: 'capitalize'}}>{userName}</span> 👋
-        </h1>
-        <p className="text-muted mb-0">
-           ¿Cómo te sientes hoy? Estamos aquí para acompañarte.
-        </p>
+  // =========================================================
+  // 🏥 VISTA PACIENTE
+  // =========================================================
+  const PatientView = () => (
+    <>
+      <div className="mb-4">
+        <h2 className="fw-bold text-dark">Hola, {user.name} 👋</h2>
+        <p className="text-muted">¿Cómo te sientes hoy? Estamos aquí para acompañarte.</p>
       </div>
-
-      <h4 className="fw-bold mb-4 text-secondary">Tu Espacio Personal</h4>
       <Row className="g-4">
         <Col md={6} lg={4}>
-          <Card className="h-100 shadow-sm border-0 hover-scale" style={{ backgroundColor: '#E6F4F1' }}>
-            <Card.Body className="p-4 d-flex flex-column">
-              <div className="fs-1 mb-3">
-                 {userRole === 'tutor' ? '👁️' : '💬'}
-              </div>
-              <Card.Title className="fw-bold text-success">{content.chatTitle}</Card.Title>
-              <Card.Text className="text-muted small">
-                {content.chatText}
-              </Card.Text>
-              <Link to="/chat">
-                <Button variant="success" className="mt-auto w-100 fw-bold">
-                    {content.chatBtn}
-                </Button>
-              </Link>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col md={6} lg={4}>
-          <Card className="h-100 shadow-sm border-0">
-            <Card.Body className="p-4 d-flex flex-column">
-              <div className="fs-1 mb-3">👤</div>
-              <Card.Title className="fw-bold text-dark">Mi Perfil</Card.Title>
-              <Card.Text className="text-muted small">
-                Actualiza tus datos personales, contraseña y preferencias.
-              </Card.Text>
-              <Link to="/profile">
-                <Button variant="outline-dark" className="mt-auto w-100">
-                  {content.profileBtn}
-                </Button>
-              </Link>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col md={6} lg={4}>
-          <Card className="h-100 shadow-sm border-0">
-            <Card.Body className="p-4 d-flex flex-column">
-              <div className="fs-1 mb-3">📅</div>
-              <Card.Title className="fw-bold text-dark">Historial</Card.Title>
-              <Card.Text className="text-muted small">
-                Revisa el historial de actividad y fechas importantes.
-              </Card.Text>
-              <Button variant="outline-secondary" className="mt-auto w-100">
-                Ver Historial
+          <Card className="h-100 border-0 shadow-sm bg-success bg-opacity-10">
+            <Card.Body className="p-4">
+              <div className="display-4 mb-3">💬</div>
+              <h4 className="fw-bold text-success">Sala de Vínculo</h4>
+              <p className="small text-muted">Habla con un estudiante supervisado.</p>
+              <Button variant="success" className="w-100 mt-3" onClick={() => navigate('/chat')}>
+                Entrar al Chat
               </Button>
             </Card.Body>
           </Card>
         </Col>
+        <Col md={6} lg={4}>
+          <Card className="h-100 border-0 shadow-sm">
+            <Card.Body className="p-4">
+              <h4 className="fw-bold">📚 Recursos</h4>
+              <p className="small text-muted">Lecturas y ejercicios de calma.</p>
+              <Button variant="outline-primary" className="w-100 mt-3">Ver Biblioteca</Button>
+            </Card.Body>
+          </Card>
+        </Col>
       </Row>
+    </>
+  );
+
+  // =========================================================
+  // 🎓 VISTA ALUMNO (Prácticas y Horas)
+  // =========================================================
+  const StudentView = () => (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold text-primary">Estudiante: {user.name} 🎓</h2>
+          <Badge bg="primary">Práctica Supervisada</Badge>
+        </div>
+        <div className="text-end">
+          <small className="text-muted d-block">Horas Cumplidas</small>
+          <h4 className="fw-bold">12 / 50 hs</h4>
+        </div>
+      </div>
+
+      <Row className="g-4">
+        <Col md={8}>
+          <Card className="border-0 shadow-sm mb-4">
+            <Card.Header className="bg-white fw-bold py-3">Mis Pacientes Activos</Card.Header>
+            <Card.Body>
+              <Table hover responsive>
+                <thead>
+                  <tr>
+                    <th>Paciente</th>
+                    <th>Estado</th>
+                    <th>Última Sesión</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Juan (Anónimo)</td>
+                    <td><Badge bg="success">En curso</Badge></td>
+                    <td>Ayer 18:30</td>
+                    <td><Button size="sm" variant="outline-primary" onClick={() => navigate('/chat')}>Ver Chat</Button></td>
+                  </tr>
+                  <tr>
+                    <td>Caso #402</td>
+                    <td><Badge bg="warning">Supervisión Pendiente</Badge></td>
+                    <td>03 Feb</td>
+                    <td><Button size="sm" variant="outline-dark">Consultar Tutor</Button></td>
+                  </tr>
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
+        </Col>
+        
+        <Col md={4}>
+          <Card className="border-0 shadow-sm bg-primary text-white">
+            <Card.Body className="p-4">
+              <h5>Progreso Académico</h5>
+              <ProgressBar variant="info" now={25} label="25%" className="my-3 bg-white bg-opacity-25" />
+              <p className="small">Recuerda completar tus informes después de cada sesión para que el tutor te apruebe las horas.</p>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </>
+  );
+
+  // =========================================================
+  // 👨‍🏫 VISTA TUTOR / SUPERVISOR
+  // =========================================================
+  const TutorView = () => (
+    <>
+      <div className="mb-4">
+        <h2 className="fw-bold text-dark">Panel de Supervisión 👁️</h2>
+        <p className="text-muted">Docente: {user.name}</p>
+      </div>
+
+      <Row className="g-4 mb-4">
+        <Col md={4}>
+          <Card className="border-0 shadow-sm text-center p-3">
+            <h3 className="fw-bold text-danger">3</h3>
+            <span className="text-muted small">Alertas de Riesgo</span>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="border-0 shadow-sm text-center p-3">
+            <h3 className="fw-bold text-primary">15</h3>
+            <span className="text-muted small">Alumnos a Cargo</span>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-white fw-bold">Auditoría de Chats Recientes</Card.Header>
+        <Card.Body>
+          <Table hover>
+            <thead>
+              <tr>
+                <th>Alumno</th>
+                <th>Paciente (ID)</th>
+                <th>Alerta Detectada</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Maria Gomez</td>
+                <td>#9921</td>
+                <td><Badge bg="danger">Palabra Clave: "Tristeza"</Badge></td>
+                <td><Button size="sm" variant="danger">Intervenir</Button></td>
+              </tr>
+              <tr>
+                <td>Juan Perez</td>
+                <td>#1102</td>
+                <td><Badge bg="success">Normal</Badge></td>
+                <td><Button size="sm" variant="outline-secondary">Revisar</Button></td>
+              </tr>
+            </tbody>
+          </Table>
+        </Card.Body>
+      </Card>
+    </>
+  );
+
+  // =========================================================
+  // 🏛️ VISTA INSTITUCIÓN (ACTUALIZADA CON ESTADÍSTICAS) 📊
+  // =========================================================
+  const InstitutionView = () => (
+    <>
+      <div className="mb-4 border-bottom pb-3 d-flex justify-content-between align-items-end">
+        <div>
+          <h2 className="fw-bold text-dark">🏛️ {user.name}</h2>
+          <p className="text-muted mb-0">Panel de Gestión de Convenios y Datos Epidemiológicos</p>
+        </div>
+        <div className="d-none d-md-block">
+            <Button variant="outline-dark" size="sm">📅 Exportar Reporte Mensual</Button>
+        </div>
+      </div>
+
+      <Row className="g-4 mb-4">
+        <Col md={4}>
+          <Card className="bg-dark text-white h-100 shadow-sm">
+            <Card.Body>
+              <h6 className="opacity-75">Alumnos Inscritos</h6>
+              <h2 className="display-6 fw-bold">142</h2>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="bg-success text-white h-100 shadow-sm">
+            <Card.Body>
+              <h6 className="opacity-75">Pacientes Atendidos</h6>
+              <h2 className="display-6 fw-bold">850</h2>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="bg-warning text-dark h-100 shadow-sm">
+            <Card.Body>
+              <h6 className="opacity-75">Horas Práctica</h6>
+              <h2 className="display-6 fw-bold">3,200 hs</h2>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="mb-4">
+        {/* GRÁFICO DE BARRAS DE INVESTIGACIÓN */}
+        <Col lg={8}>
+          <Card className="border-0 shadow-sm h-100">
+            <Card.Header className="bg-white fw-bold py-3">
+              📈 Principales Motivos de Consulta (Investigación)
+            </Card.Header>
+            <Card.Body>
+              
+              <div className="mb-3">
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>Ansiedad y Estrés Académico</span>
+                  <span className="fw-bold">45%</span>
+                </div>
+                <ProgressBar variant="danger" now={45} style={{ height: '10px' }} />
+              </div>
+
+              <div className="mb-3">
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>Depresión y Soledad</span>
+                  <span className="fw-bold">30%</span>
+                </div>
+                <ProgressBar variant="warning" now={30} style={{ height: '10px' }} />
+              </div>
+
+              <div className="mb-3">
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>Problemas de Pareja / Vínculos</span>
+                  <span className="fw-bold">15%</span>
+                </div>
+                <ProgressBar variant="info" now={15} style={{ height: '10px' }} />
+              </div>
+
+              <div className="mb-0">
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>Orientación Vocacional</span>
+                  <span className="fw-bold">10%</span>
+                </div>
+                <ProgressBar variant="success" now={10} style={{ height: '10px' }} />
+              </div>
+
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* COLUMNA LATERAL */}
+        <Col lg={4}>
+          <Card className="border-0 shadow-sm h-100">
+            <Card.Body>
+              <h5 className="fw-bold mb-3">Estado del Convenio</h5>
+              <Alert variant="info" className="small">
+                ✅ <strong>Activo</strong> hasta Dic 2026. <br/>
+                Seguro: <strong>Vigente</strong>.
+              </Alert>
+              <div className="d-grid gap-2">
+                <Button variant="outline-dark" size="sm">Gestionar Alumnos</Button>
+                <Button variant="outline-dark" size="sm">Auditoría Legal</Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </>
+  );
+
+  // =========================================================
+  // 🔄 RENDERIZADO CONDICIONAL
+  // =========================================================
+  const renderContent = () => {
+    switch(user.role) {
+      case 'alumno': return <StudentView />;
+      case 'tutor': return <TutorView />;
+      case 'institucion': return <InstitutionView />;
+      default: return <PatientView />;
+    }
+  };
+
+  return (
+    <Container className="py-5 min-vh-100">
+      {renderContent()}
     </Container>
   );
 };
