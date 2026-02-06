@@ -1,19 +1,30 @@
-import React from 'react';
-import { Container, Card, Button, Form, Badge } from 'react-bootstrap'; // Agregamos Badge
+import React, { useState } from 'react';
+import { Container, Card, Button, Form, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import SessionCloseModal from '../../pages/chat/SessionCloseModal'; // 👈 IMPORTAR ESTO
 
 const ChatPage = () => {
   // 1. RECUPERAMOS EL ROL
   const userRole = localStorage.getItem('usuarioRol');
+  
+  // 2. ESTADO PARA EL MODAL (NUEVO)
+  const [showModal, setShowModal] = useState(false);
 
   return (
     <Container className="py-5 mt-5">
       
-      {/* Botón Volver */}
-      <div className="mb-4">
+      {/* Botón Volver y Finalizar */}
+      <div className="mb-4 d-flex justify-content-between align-items-center">
         <Link to="/dashboard" className="text-decoration-none text-muted">
           ← Volver al Panel
         </Link>
+        
+        {/* BOTÓN FINALIZAR (Solo para Alumnos) */}
+        {userRole === 'alumno' && (
+          <Button variant="outline-danger" size="sm" onClick={() => setShowModal(true)}>
+            🛑 Finalizar Sesión e Informar
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-sm border-0" style={{ height: '70vh' }}>
@@ -94,6 +105,12 @@ const ChatPage = () => {
 
         </Card.Footer>
       </Card>
+
+      {/* 👇 MODAL OCULTO (Se abre con el botón rojo) */}
+      <SessionCloseModal 
+        show={showModal} 
+        handleClose={() => setShowModal(false)} 
+      />
 
     </Container>
   );
