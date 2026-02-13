@@ -14,6 +14,7 @@ import ProfilePage from './pages/dashboard/ProfilePage';
 import InstitutionRegister from './pages/auth/InstitutionRegister';
 import ChatPage from './pages/chat/ChatPage';
 import WaitingRoom from './pages/chat/WaitingRoom'; // ✅ Importado correctamente
+import StudentDashboard from './pages/dashboard/StudentDashboard';
 
 function App() {
   return (
@@ -40,8 +41,12 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           
           {/* ZONA DE CHAT Y EMERGENCIA */}
-          <Route path="/chat" element={<ChatPage />} />
+         // El ":roomId" es la llave de seguridad. Sin ella, no hay chat.
+          <Route path="/chat/:roomId" element={<ChatPage />} /> 
           <Route path="/waiting-room" element={<WaitingRoom />} /> 
+
+          {/* RUTA DE LA GUARDIA (PANEL DE ALUMNO) */}
+<Route path="/guardia" element={<StudentDashboard />} />
         </Routes>
       </div>
       <FooterC />

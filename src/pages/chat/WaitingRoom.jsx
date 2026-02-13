@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Container, Card, Button, Form, ProgressBar, Modal, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { doc, updateDoc } from 'firebase/firestore'; 
+import { db } from '../../firebase/config';
 
 const WaitingRoom = () => {
   const navigate = useNavigate();
@@ -28,16 +30,42 @@ const WaitingRoom = () => {
   // Función para avanzar de paso
   const handleNext = () => setStep(step + 1);
 
-  // Función SEGURA para entrar al chat (Botón Verde)
-  const handleEnterChat = () => {
-    // Calculamos la prioridad basada en la intensidad (si es 8 o más, es ALTA)
-    const priority = data.intensity >= 8 ? 'HIGH' : 'NORMAL';
-    
-    // Imprimimos para verificar (opcional)
-    console.log("✅ Ingresando al chat con:", { ...data, hasRisk: false, priority });
-    
-    // Navegamos DIRECTAMENTE al chat
-    navigate('/chat'); 
+  // Función SEGURA para entrar al chat privado
+ // Función SEGURA para entrar al chat y AVISAR AL MÉDICO
+  const handleEnterChat = async () => {
+    // 1. Obtenemos el ID
+    const userId = localStorage.getItem('usuarioId'); 
+
+    if (!userId) {
+        navigate('/login');
+        return;
+    }
+
+    // 2. Calculamos prioridad
+    const priority = data.intensity >= 8 ? 'ALTA' : 'NORMAL';
+    console.log("🔒 Guardando estado de espera para:", userId);
+
+    try {
+      // 3. 💾 GUARDAMOS EN FIREBASE (¡Esto es lo nuevo!)
+      // Actualizamos la ficha del usuario para decir "Estoy esperando"
+      const userRef = doc(db, "users", userId);
+
+      await updateDoc(userRef, {
+        estado: 'esperando',       // 👈 La clave para que aparezca en el panel
+        nivelTriaje: priority,     // Para ponerlo rojo o verde
+        emocion: data.emotion,     // Qué siente
+        intensidad: data.intensity,
+        fechaEspera: new Date().toISOString() // Hora de llegada
+      });
+
+      // 4. Entrar a SU sala privada
+      navigate(`/chat/${userId}`);
+
+    } catch (error) {
+      console.error("Error al solicitar turno:", error);
+      // Si falla, entramos igual, pero avisando en consola
+      navigate(`/chat/${userId}`);
+    }
   };
 
   return (
