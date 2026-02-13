@@ -13,6 +13,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import ProfilePage from './pages/dashboard/ProfilePage';
 import InstitutionRegister from './pages/auth/InstitutionRegister';
 import ChatPage from './pages/chat/ChatPage';
+import WaitingRoom from './pages/chat/WaitingRoom'; // ✅ Importado correctamente
 
 function App() {
   return (
@@ -30,17 +31,17 @@ function App() {
 
           <Route path="/login" element={<LoginPage />} />
 
-          {/* 👇 AQUÍ ESTÁ EL ARREGLO: Agregamos las rutas de roles 👇 */}
-          {/* Ruta General (Paciente) */}
+          {/* DASHBOARDS (Por ahora todos van al mismo, luego los separaremos) */}
           <Route path="/dashboard" element={<DashboardPage />} />
-          
-          {/* Rutas Nuevas (Apuntan al mismo Dashboard por ahora para que no falle) */}
           <Route path="/dashboard/tutor" element={<DashboardPage />} />
           <Route path="/dashboard/alumno" element={<DashboardPage />} />
           <Route path="/dashboard/institucion" element={<DashboardPage />} />
           
           <Route path="/profile" element={<ProfilePage />} />
+          
+          {/* ZONA DE CHAT Y EMERGENCIA */}
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/waiting-room" element={<WaitingRoom />} /> 
         </Routes>
       </div>
       <FooterC />

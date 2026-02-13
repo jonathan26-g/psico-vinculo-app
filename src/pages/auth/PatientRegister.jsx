@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+
+// 1. IMPORTAMOS FIREBASE (El Cerebro)
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore"; 
+import { auth, db } from '../../firebase/config';
 
 const PatientRegister = () => {
   const navigate = useNavigate();
   
+  // Estados para feedback visual
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   // Estados para los campos
   const [formData, setFormData] = useState({
-    nombre: '',
+    nombre: '', // Nombre completo
     email: '',
     password: '',
     confirmPassword: ''
@@ -28,25 +37,70 @@ const PatientRegister = () => {
     setLegalChecks({ ...legalChecks, [e.target.name]: e.target.checked });
   };
 
-  const handleSubmit = (e) => {
+  // ESTA ES LA FUNCIÓN QUE CAMBIA (Ahora conecta con Google)
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     
-    // VALIDACIÓN SIMPLE
+    // 1. VALIDACIÓN DE CONTRASEÑAS
     if (formData.password !== formData.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+      setError("Las contraseñas no coinciden.");
       return;
     }
 
-    // EL BLINDAJE: Si no marca todas las casillas, no pasa. 🛑
+    if (formData.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    // 2. EL BLINDAJE: Si no marca todas las casillas, no pasa. 🛑
     const { isNotEmergency, isEducational, termsAccepted } = legalChecks;
     if (!isNotEmergency || !isEducational || !termsAccepted) {
-      alert("Por seguridad, debes leer y aceptar todas las condiciones del servicio.");
+      setError("Por seguridad, debes leer y aceptar todas las condiciones del servicio.");
       return;
     }
 
-    // Si todo está bien, simulamos registro
-    alert("¡Registro exitoso! Bienvenido a Psico-Vínculo.");
-    navigate('/login');
+    setLoading(true);
+
+    try {
+      // 3. CREAR USUARIO EN GOOGLE AUTH
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // 4. GUARDAR DATOS EN BASE DE DATOS (Firestore)
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        nombre: formData.nombre,
+        email: formData.email,
+        rol: 'paciente', // 👈 ETIQUETA IMPORTANTE
+        fechaRegistro: new Date().toISOString(),
+        aceptacionLegales: { // Guardamos que aceptó los términos (Evidencia legal)
+          noEmergencia: true,
+          esEducativo: true,
+          fecha: new Date().toISOString()
+        }
+      });
+
+      console.log("Paciente registrado:", user.email);
+      alert("¡Cuenta creada con éxito! Bienvenido a Psico-Vínculo.");
+      
+      // Auto-login (guardamos datos en local) y vamos al dashboard
+      localStorage.setItem('usuarioRol', 'paciente');
+      localStorage.setItem('usuarioNombre', formData.nombre);
+      localStorage.setItem('usuarioEmail', formData.email);
+      
+      navigate('/dashboard');
+
+    } catch (error) {
+      console.error("Error registro:", error.code);
+      if (error.code === 'auth/email-already-in-use') {
+        setError("Este correo ya está registrado. Intenta iniciar sesión.");
+      } else {
+        setError("Error al crear la cuenta. Intenta nuevamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +123,9 @@ const PatientRegister = () => {
                   por favor no uses esta app. Llama al <strong>911</strong> o acude a una guardia.
                 </p>
               </Alert>
+
+              {/* Mensaje de Error si falla Firebase */}
+              {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 {/* Datos Personales Básicos */}
@@ -99,7 +156,7 @@ const PatientRegister = () => {
                   <Form.Control 
                     type="password" 
                     name="password" 
-                    placeholder="Crear contraseña segura" 
+                    placeholder="Crear contraseña segura (min 6)" 
                     required 
                     onChange={handleChange}
                   />
@@ -128,7 +185,6 @@ const PatientRegister = () => {
                       type="checkbox" 
                       name="isNotEmergency" 
                       id="check1" 
-                      required
                       onChange={handleCheckChange}
                     />
                     <Form.Check.Label htmlFor="check1" className="small text-muted">
@@ -142,11 +198,10 @@ const PatientRegister = () => {
                       type="checkbox" 
                       name="isEducational" 
                       id="check2" 
-                      required
                       onChange={handleCheckChange}
                     />
                     <Form.Check.Label htmlFor="check2" className="small text-muted">
-                      Entiendo que seré atendido por <strong>estudiantes universitarios supervisados</strong> y que esto NO constituye un tratamiento clínico/psicológico formal.
+                      Entiendo que seré atendido por <strong>estudiantes universitarios supervisados</strong> y que esto NO constituye un tratamiento clínico formal.
                     </Form.Check.Label>
                   </Form.Check>
 
@@ -156,7 +211,6 @@ const PatientRegister = () => {
                       type="checkbox" 
                       name="termsAccepted" 
                       id="check3" 
-                      required
                       onChange={handleCheckChange}
                     />
                     <Form.Check.Label htmlFor="check3" className="small text-muted">
@@ -171,14 +225,13 @@ const PatientRegister = () => {
                     variant="success" 
                     size="lg" 
                     type="submit"
-                    // Deshabilitamos el botón visualmente si no aceptan los checks (Opcional, pero recomendado)
-                    disabled={!legalChecks.isNotEmergency || !legalChecks.isEducational || !legalChecks.termsAccepted}
+                    disabled={loading || !legalChecks.isNotEmergency || !legalChecks.isEducational || !legalChecks.termsAccepted}
                   >
-                    Registrarme y Comenzar
+                    {loading ? "Creando cuenta..." : "Registrarme y Comenzar"}
                   </Button>
-                  <Button variant="link" className="text-muted" onClick={() => navigate('/login')}>
+                  <Link to="/login" className="btn btn-link text-muted">
                     Ya tengo cuenta
-                  </Button>
+                  </Link>
                 </div>
 
               </Form>

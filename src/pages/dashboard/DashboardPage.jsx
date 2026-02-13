@@ -35,9 +35,9 @@ const DashboardPage = () => {
               <div className="display-4 mb-3">💬</div>
               <h4 className="fw-bold text-success">Sala de Vínculo</h4>
               <p className="small text-muted">Habla con un estudiante supervisado.</p>
-              <Button variant="success" className="w-100 mt-3" onClick={() => navigate('/chat')}>
-                Entrar al Chat
-              </Button>
+              <Button variant="success" className="w-100 mt-3" onClick={() => navigate('/waiting-room')}>
+  Solicitar Ayuda (Triaje)
+</Button>
             </Card.Body>
           </Card>
         </Col>

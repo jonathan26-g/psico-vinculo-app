@@ -1,62 +1,74 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-// IMPORT UNIFICADO Y CORRECTO
-import { EMAILS_ALUMNOS_PERMITIDOS, SUPERVISORES_PERMITIDOS, USUARIOS_INSTITUCIONALES } from '../../data/mockData';
+
+// 1. IMPORTAMOS LAS HERRAMIENTAS DE FIREBASE
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from '../../firebase/config'; // Asegúrate de que la ruta sea correcta
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Para mostrar "Cargando..."
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    
-    // 1. Valores por defecto (Paciente)
-    let role = 'paciente';
-    let name = email.split('@')[0];
-    let uniId = null; // Variable para guardar el ID de la universidad
+    setError("");
+    setLoading(true); // Activamos el spinner o deshabilitamos botón
 
-    // 2. BUSQUEDA EN LAS LISTAS DE DATOS (MOCK DATA)
-    const foundStudent = EMAILS_ALUMNOS_PERMITIDOS.find(u => u.email === email);
-    const foundSupervisor = SUPERVISORES_PERMITIDOS.find(u => u.email === email);
-    const foundInstitution = USUARIOS_INSTITUCIONALES.find(u => u.email === email);
-    
-    // 3. ASIGNACIÓN DE ROLES
-    if (foundStudent) {
-      role = 'alumno';
-      name = foundStudent.nombre;
-      uniId = foundStudent.universidadId;
-    } 
-    else if (foundSupervisor) {
-      role = 'tutor';
-      name = 'Profesor Supervisor';
-      // Los supervisores pueden tener varias universidades, por ahora lo dejamos genérico
-    } 
-    else if (foundInstitution) {
-      role = 'institucion';
-      name = foundInstitution.nombre;
-      uniId = foundInstitution.universidadId; // ¡Aquí capturamos si es UNT (1), UNSTA (2), etc!
-    }
+    try {
+      // 2. 🌟 CONEXIÓN CON FIREBASE
+      // Esto verifica email y contraseña en la nube de Google
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    // 4. GUARDADO EN MEMORIA (LocalStorage)
-    localStorage.setItem('usuarioRol', role);
-    localStorage.setItem('usuarioNombre', name);
-    
-    // Si tenemos ID de universidad, lo guardamos. (Sirve para mostrar logos específicos después)
-    if (uniId) {
-      localStorage.setItem('usuarioUniversidadId', uniId);
-    } else {
-      localStorage.removeItem('usuarioUniversidadId'); // Limpiar si entra un paciente
-    }
+      console.log("Login exitoso:", user.email);
 
-    // 5. REDIRECCIÓN
-    switch(role) {
-      case 'alumno': navigate('/dashboard/alumno'); break;
-      case 'tutor': navigate('/dashboard/tutor'); break;
-      case 'institucion': navigate('/dashboard/institucion'); break;
-      default: navigate('/dashboard'); 
+      // 3. ASIGNACIÓN DE ROLES (PROVISIONAL)
+      // Como todavía no guardamos el rol en la Base de Datos, 
+      // usaremos una lógica simple basada en el email para tus pruebas.
+      // Más adelante, leeremos esto desde la colección 'users' de Firestore.
+      
+      let role = 'paciente'; // Por defecto todos son pacientes (como Ana)
+      let name = email.split('@')[0]; // Usamos la parte del mail antes del @ como nombre temporal
+      
+      // Truco para probar otros roles:
+      if (email.includes('alumno')) role = 'alumno';
+      if (email.includes('tutor')) role = 'tutor';
+      if (email.includes('admin')) role = 'institucion';
+
+      // 4. GUARDADO EN MEMORIA (LocalStorage)
+      // Esto mantiene la sesión activa en el navegador
+      localStorage.setItem('usuarioRol', role);
+      localStorage.setItem('usuarioNombre', name);
+      localStorage.setItem('usuarioEmail', user.email);
+      localStorage.setItem('usuarioId', user.uid); // ID único de Firebase
+
+      // 5. REDIRECCIÓN SEGÚN ROL
+      switch(role) {
+        case 'alumno': navigate('/dashboard/alumno'); break;
+        case 'tutor': navigate('/dashboard/tutor'); break;
+        case 'institucion': navigate('/dashboard/institucion'); break;
+        default: navigate('/dashboard'); // Pacientes van al dashboard general
+      }
+
+    } catch (error) {
+      console.error("Error de login:", error.code);
+      
+      // Traducimos los errores de Firebase a español para el usuario
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        setError("El correo o la contraseña son incorrectos.");
+      } else if (error.code === 'auth/user-not-found') {
+        setError("Este usuario no existe.");
+      } else if (error.code === 'auth/too-many-requests') {
+        setError("Demasiados intentos fallidos. Intenta más tarde.");
+      } else {
+        setError("Error al conectar con el servidor.");
+      }
+    } finally {
+      setLoading(false); // Desactivamos el estado de carga
     }
   };
 
@@ -64,7 +76,7 @@ const LoginPage = () => {
     <Container fluid className="min-vh-100 d-flex flex-column"> 
       <Row className="flex-grow-1">
         
-        {/* COLUMNA IZQUIERDA: MARCO LEGAL */}
+        {/* COLUMNA IZQUIERDA: MARCO LEGAL (Tu diseño original conservado) */}
         <Col md={7} className="bg-primary text-white p-4 p-md-5 d-flex flex-column justify-content-center">
           
           <div className="mb-4">
@@ -107,7 +119,7 @@ const LoginPage = () => {
 
         </Col>
 
-        {/* COLUMNA DERECHA: LOGIN */}
+        {/* COLUMNA DERECHA: LOGIN CON FIREBASE */}
         <Col md={5} className="bg-light d-flex align-items-center justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '400px' }}>
             <div className="text-center mb-4">
@@ -138,12 +150,15 @@ const LoginPage = () => {
                 />
               </Form.Group>
 
-              {error && <p className="text-danger small">{error}</p>}
+              {/* Mensaje de Error (Si falla Firebase) */}
+              {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
 
               <div className="d-grid gap-2">
-                <Button variant="primary" size="lg" type="submit">
-                  Ingresar
+                <Button variant="primary" size="lg" type="submit" disabled={loading}>
+                  {loading ? "Verificando..." : "Ingresar"}
                 </Button>
+                
+                {/* Nota: Este botón de registro aún no funciona con Firebase, pero lo dejamos visualmente */}
                 <Button variant="outline-secondary" type="button" onClick={() => navigate('/register')}>
                   Crear Cuenta Nueva
                 </Button>
