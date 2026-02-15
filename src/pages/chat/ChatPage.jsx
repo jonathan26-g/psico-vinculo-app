@@ -1,168 +1,228 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Card, Button, Form, Badge, Modal } from 'react-bootstrap';
-// 1. IMPORTAMOS useParams PARA LEER LA LLAVE DE LA SALA 🔑
-import { Link, useParams } from 'react-router-dom';
-import SessionCloseModal from './SessionCloseModal';
-
+import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Card, Form, Button, Spinner, Badge, Modal } from 'react-bootstrap';
+// 🔥 Importamos lo necesario de Firebase
+import { 
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc 
+} from 'firebase/firestore';
 import { db } from '../../firebase/config';
-// 2. IMPORTAMOS 'where' PARA EL FILTRO DE SEGURIDAD 🛡️
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
-
-const RISK_KEYWORDS = ['matar', 'suicidio', 'morir', 'acabar con todo', 'pastillas', 'sangre', 'cuchillo', 'no quiero vivir', 'desaparecer'];
+import SessionCloseModal from './SessionCloseModal'; // Tu modal de informe
 
 const ChatPage = () => {
-  // 3. CAPTURAMOS EL ID DE LA SALA DESDE LA URL (Nivel 1 de Seguridad)
-  const { roomId } = useParams(); 
+  const { roomId } = useParams(); // El ID de la sala (es el ID del paciente)
+  const navigate = useNavigate();
+  const dummy = useRef(); // Para el scroll automático
 
-  const userRole = localStorage.getItem('usuarioRol');
-  const userId = localStorage.getItem('usuarioId');
-  const userEmail = localStorage.getItem('usuarioEmail');
+  // Estados
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  // 🔥 ESTADO NUEVO: Para saber si la sesión sigue viva
+  const [isSessionActive, setIsSessionActive] = useState(true);
+  const [showEndAlert, setShowEndAlert] = useState(false);
 
+  // Modal de informe (solo para el alumno)
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [showCrisisModal, setShowCrisisModal] = useState(false);
-  const [inputText, setInputText] = useState("");
-  const [messages, setMessages] = useState([]); 
 
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  // Datos del usuario actual
+  const currentUserId = localStorage.getItem('usuarioId');
+  const currentUserName = localStorage.getItem('usuarioNombre');
+  const currentUserRole = localStorage.getItem('usuarioRol');
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  };
-
-  // --- 🔒 LÓGICA DE ESCUCHA BLINDADA ---
+  // 1. 📨 ESCUCHAR MENSAJES (Chat en tiempo real)
   useEffect(() => {
-    if (!roomId) return; // Si no hay sala, no escuchamos nada.
-
-    const messagesRef = collection(db, "messages");
-    
-    // 🔥 FILTRO DE SEGURIDAD (Nivel 2): 
-    // "Solo dame los mensajes que tengan el sello de ESTA habitación exacta"
+    const messagesRef = collection(db, 'messages');
     const q = query(
       messagesRef, 
-      where("roomId", "==", roomId), // 👈 ESTO ES EL CANDADO
-      orderBy("createdAt", "asc")
+      orderBy('createdAt', 'asc') // Ordenar por fecha
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMessages(newMessages);
-      setTimeout(scrollToBottom, 100);
+      const msgs = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(msg => msg.roomId === roomId); // Filtramos solo los de esta sala
+      
+      setMessages(msgs);
+      setLoading(false);
+      
+      // Agregamos 'block: nearest' para que NO mueva la página entera, solo el chat
+setTimeout(() => dummy.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
     });
 
     return () => unsubscribe();
-  }, [roomId]); // Si cambia el ID de sala, se reinicia el chat inmediatamente.
+  }, [roomId]);
+
+  // 2. 🔒 ESCUCHAR EL ESTADO DE LA SESIÓN (¡Nuevo!)
+  // Esto detecta si el alumno finalizó el caso
+  useEffect(() => {
+    const userRef = doc(db, "users", roomId); // Escuchamos al paciente dueño de la sala
+    
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        // Si el estado es 'finalizado', bloqueamos el chat
+        if (userData.estado === 'finalizado') {
+          setIsSessionActive(false);
+          setShowEndAlert(true);
+        } else {
+          setIsSessionActive(true);
+          setShowEndAlert(false);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
 
 
-  // --- 🔒 LÓGICA DE ENVÍO CERTIFICADO ---
+  // Función para enviar mensaje
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!newMessage.trim()) return;
 
-    const lowerText = inputText.toLowerCase();
-    const isRisk = RISK_KEYWORDS.some(word => lowerText.includes(word));
-
-    const newMessage = {
-      text: inputText,
-      senderId: userId,
-      senderEmail: userEmail,
-      role: userRole,
+    await addDoc(collection(db, 'messages'), {
+      text: newMessage,
       createdAt: serverTimestamp(),
-      isRisk: isRisk,
-      roomId: roomId // 👈 CERTIFICADO: El mensaje se guarda con el ID de la sala.
-    };
+      senderId: currentUserId,
+      senderName: currentUserName,
+      roomId: roomId
+    });
 
-    try {
-      await addDoc(collection(db, "messages"), newMessage);
-      setInputText("");
-      setTimeout(() => { inputRef.current?.focus(); }, 10);
-    } catch (error) {
-      console.error("Error al enviar mensaje:", error);
-    }
-
-    // Lógica del Bot de Seguridad
-    if (isRisk && userRole === 'paciente') {
-      setTimeout(() => setShowCrisisModal(true), 800);
-      setTimeout(async () => {
-        await addDoc(collection(db, "messages"), {
-          text: '🛡️ DETECCIÓN AUTOMÁTICA: Recordatorio de seguridad.',
-          senderId: 'sistema',
-          role: 'system',
-          createdAt: serverTimestamp(),
-          roomId: roomId // El bot también respeta la sala privada
-        });
-      }, 1500);
-    }
+    setNewMessage('');
   };
 
   return (
-    <Container className="py-5 mt-5">
-      <div className="mb-4 d-flex justify-content-between align-items-center">
-        <Link to="/dashboard" className="text-decoration-none text-muted">← Volver al Panel</Link>
-        {userRole === 'alumno' && (
-          <Button variant="outline-danger" size="sm" onClick={() => setShowCloseModal(true)}>
-            🛑 Finalizar Sesión
-          </Button>
-        )}
+    <Container className="py-4">
+      {/* Cabecera del Chat */}
+      <div className="mb-3">
+        <Button variant="link" onClick={() => navigate(-1)} className="text-decoration-none ps-0">
+          ← Volver
+        </Button>
       </div>
 
-      <Card className="shadow-sm border-0" style={{ height: '70vh' }}>
-        <Card.Header className={`py-3 text-white ${userRole === 'tutor' ? 'bg-primary' : 'bg-success'}`}>
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 className="mb-0 fw-bold">
-                {userRole === 'tutor' ? '👁️ Auditoría' : '🔒 Sala Privada'}
-              </h5>
-              {/* Información de depuración segura */}
-              <small className="opacity-75" style={{fontSize: '0.7em'}}>
-                 ID Caso: {roomId ? roomId.slice(0,6) + '...' : 'Cargando'}
-              </small> 
-            </div>
-             <div className="d-flex align-items-center gap-2">
-                {userRole === 'tutor' && <Badge bg="warning" text="dark">Modo Supervisor</Badge>}
-                {userRole !== 'tutor' && userRole !== 'alumno' && (
-                    <Button variant="danger" size="sm" onClick={() => setShowCrisisModal(true)}>🆘 Ayuda</Button>
-                )}
-            </div>
+      <Card className="shadow-lg border-0" style={{ height: '80vh' }}>
+        {/* ENCABEZADO VERDE O AZUL SEGÚN ROL */}
+        <Card.Header className={`text-white d-flex justify-content-between align-items-center ${currentUserRole === 'alumno' ? 'bg-primary' : 'bg-success'}`}>
+          <div>
+            <h5 className="mb-0">
+              {currentUserRole === 'alumno' ? '💬 Sala de Consulta' : '🛡️ Espacio Seguro'}
+            </h5>
+            <small className="opacity-75">ID Caso: {roomId.slice(0, 6)}...</small>
           </div>
+          
+          {/* BOTÓN SOLO PARA ALUMNOS: FINALIZAR */}
+          {currentUserRole === 'alumno' && isSessionActive && (
+            <Button 
+              variant="danger" 
+              size="sm" 
+              onClick={() => setShowCloseModal(true)}
+            >
+              📋 Finalizar Sesión
+            </Button>
+          )}
+
+          {/* INDICADOR PARA PACIENTES */}
+          {currentUserRole !== 'alumno' && (
+            <Badge bg="light" text="dark">
+                {isSessionActive ? '🟢 En Vivo' : '🔴 Finalizado'}
+            </Badge>
+          )}
         </Card.Header>
-        
-        <Card.Body className="bg-light overflow-auto">
-          <div className="d-flex flex-column gap-3">
-            {messages.map((msg) => {
-              const isMe = msg.senderId === userId;
-              const isSystem = msg.role === 'system';
-              return (
-                <div key={msg.id} className={`p-3 rounded shadow-sm ${isSystem ? 'align-self-center bg-warning bg-opacity-25 w-75 text-center' : (isMe ? 'align-self-end text-white' : 'align-self-start bg-white')}`} style={{maxWidth: '75%', backgroundColor: isMe ? '#198754' : (isSystem ? '' : 'white')}}>
-                   {!isSystem && <small className={`d-block mb-1 fw-bold ${isMe ? 'text-light text-end' : 'text-muted'}`}>{isMe ? 'Tú' : (msg.role === 'alumno' ? 'Alumno' : 'Paciente')}</small>}
-                   {msg.text}
-                   {msg.createdAt && <div className={`small mt-1 ${isMe ? 'text-white-50 text-end' : 'text-muted text-end'}`} style={{fontSize: '0.7rem'}}>{new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>}
-                </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
+
+        {/* ÁREA DE MENSAJES */}
+        <Card.Body className="overflow-auto bg-light" style={{ flex: 1 }}>
+          {loading ? (
+            <div className="text-center mt-5"><Spinner animation="border" variant="primary" /></div>
+          ) : (
+            <>
+              {messages.map((msg) => {
+                // 🔥 LÓGICA DE VISUALIZACIÓN (DERECHA O IZQUIERDA)
+                const isMe = msg.senderId === currentUserId;
+
+                return (
+                  <div key={msg.id} className={`d-flex ${isMe ? 'justify-content-end' : 'justify-content-start'} mb-3`}>
+                    <div 
+                      className={`p-3 rounded-3 shadow-sm ${isMe ? 'bg-primary text-white' : 'bg-white text-dark border'}`}
+                      style={{ maxWidth: '75%', minWidth: '150px' }}
+                    >
+                      {/* Nombre pequeño arriba */}
+                      <small className={`d-block mb-1 fw-bold ${isMe ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.75rem' }}>
+                        {isMe ? 'Tú' : msg.senderName}
+                      </small>
+                      
+                      {/* Texto del mensaje */}
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                      
+                      {/* Hora */}
+                      <div className={`text-end mt-1 ${isMe ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.7rem' }}>
+                        {msg.createdAt?.seconds ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={dummy}></div>
+            </>
+          )}
         </Card.Body>
 
-        <Card.Footer className="bg-white p-3">
-          <Form className="d-flex gap-2" onSubmit={handleSendMessage}>
-            <Form.Control ref={inputRef} type="text" placeholder="Mensaje seguro..." value={inputText} onChange={(e) => setInputText(e.target.value)} autoFocus />
-            <Button variant={userRole === 'tutor' ? "warning" : "success"} type="submit">Enviar</Button>
+        {/* INPUT DE TEXTO (Bloqueado si terminó la sesión) */}
+        <Card.Footer className="bg-white">
+          <Form onSubmit={handleSendMessage} className="d-flex gap-2">
+            <Form.Control
+              type="text"
+              placeholder={isSessionActive ? "Escribe un mensaje..." : "La sesión ha finalizado."}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="rounded-pill bg-light border-0 px-4"
+              disabled={!isSessionActive} // 🔒 BLOQUEO
+            />
+            <Button 
+                variant={currentUserRole === 'alumno' ? 'primary' : 'success'} 
+                type="submit" 
+                className="rounded-circle px-3"
+                disabled={!newMessage.trim() || !isSessionActive}
+            >
+              ➤
+            </Button>
           </Form>
         </Card.Footer>
       </Card>
 
-      <SessionCloseModal show={showCloseModal} handleClose={() => setShowCloseModal(false)} patientId={roomId} />
-      <Modal show={showCrisisModal} onHide={() => setShowCrisisModal(false)} centered>
-        <Modal.Header className="bg-warning border-0 text-dark"><Modal.Title>🫂 Queremos cuidarte</Modal.Title></Modal.Header>
-        <Modal.Body className="p-4 text-center">
-            <p className="lead">Si sientes que corres peligro, no estás solo.</p>
-            <div className="d-grid gap-2 mt-4"><Button variant="danger" href="tel:135">🆘 Llamar al 135</Button><Button variant="outline-dark" onClick={() => setShowCrisisModal(false)}>💬 Seguir hablando</Button></div>
+      {/* MODAL DEL ALUMNO (Informe) */}
+      <SessionCloseModal 
+        show={showCloseModal} 
+        handleClose={() => setShowCloseModal(false)} 
+        patientId={roomId} 
+      />
+
+      {/* 🔥 MODAL DE AVISO AL PACIENTE (Cuando termina) */}
+      <Modal 
+        show={showEndAlert && currentUserRole !== 'alumno'} // Solo se muestra al paciente
+        backdrop="static" 
+        keyboard={false}
+        centered
+      >
+        <Modal.Header className="bg-success text-white">
+          <Modal.Title>👋 Sesión Finalizada</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center p-4">
+          <h4>¡Gracias por confiar!</h4>
+          <p className="text-muted">
+            El profesional ha finalizado la consulta. Esperamos haberte ayudado.
+            Este chat quedará guardado en tu historial.
+          </p>
+          <hr />
+          <p className="small">¿Necesitas ayuda de nuevo? Puedes volver al inicio y solicitar otro turno.</p>
         </Modal.Body>
+        <Modal.Footer className="justify-content-center">
+          <Button variant="outline-success" onClick={() => navigate('/dashboard')}>
+            Volver a mi Panel
+          </Button>
+        </Modal.Footer>
       </Modal>
+
     </Container>
   );
 };
