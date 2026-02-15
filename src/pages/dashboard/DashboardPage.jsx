@@ -62,12 +62,13 @@ const DashboardPage = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-primary">Estudiante: {user.name} 🎓</h2>
-          <Badge bg="primary">Práctica Supervisada</Badge>
+          <Badge bg="primary" className="me-2">Práctica Supervisada</Badge>
         </div>
-        <div className="text-end">
-          <small className="text-muted d-block">Horas Cumplidas</small>
-          <h4 className="fw-bold">12 / 50 hs</h4>
-        </div>
+        
+        {/* 👇 BOTÓN NUEVO PARA IR A LA GUARDIA 👇 */}
+        <Button variant="danger" size="lg" onClick={() => navigate('/guardia')}>
+            🔥 Ir a la Guardia (Tiempo Real)
+        </Button>
       </div>
 
       <Row className="g-4">

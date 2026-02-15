@@ -1,35 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Badge, Row, Col, Alert } from 'react-bootstrap';
+import { Container, Card, Button, Badge, Row, Col, Alert, Tab, Tabs } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-// 🔥 Importamos Firebase
 import { db } from '../../firebase/config';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 
 const StudentDashboard = () => {
-  const [patients, setPatients] = useState([]);
+  const [waitingPatients, setWaitingPatients] = useState([]);
+  const [myPatients, setMyPatients] = useState([]); // 👈 NUEVO ESTADO
   const navigate = useNavigate();
+  const myId = localStorage.getItem('usuarioId'); // Mi ID de alumno
 
+  // 📡 RADAR 1: Pacientes en Espera (Para todos)
   useEffect(() => {
-    // 📡 RADAR ACTIVADO: Escuchar usuarios en estado 'esperando'
     const usersRef = collection(db, "users");
-    
-    // Filtro: "Dame solo los que están esperando"
     const q = query(usersRef, where("estado", "==", "esperando"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const patientsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setPatients(patientsList);
+      setWaitingPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-
-    return () => unsubscribe(); // Apagar radar al salir
+    return () => unsubscribe();
   }, []);
 
-  const handleJoinChat = (patientId) => {
-    // 🚀 El alumno viaja a la sala del paciente
-    navigate(`/chat/${patientId}`);
+  // 📡 RADAR 2: Mis Pacientes Activos (Solo míos)
+  useEffect(() => {
+    if (!myId) return;
+
+    const usersRef = collection(db, "users");
+    // Buscamos usuarios que YO estoy atendiendo y siguen en consulta
+    const q = query(
+        usersRef, 
+        where("atendidoPor", "==", myId), 
+        where("estado", "==", "en_consulta")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMyPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [myId]);
+
+
+  const handleJoinChat = async (patientId, isNewCase) => {
+    try {
+      if (isNewCase) {
+        // Solo si es nuevo cambiamos el estado
+        await updateDoc(doc(db, "users", patientId), {
+            estado: 'en_consulta',
+            atendidoPor: myId,
+            fechaInicioAtencion: new Date().toISOString()
+        });
+      }
+      navigate(`/chat/${patientId}`);
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   return (
@@ -37,53 +61,77 @@ const StudentDashboard = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 className="fw-bold text-primary">👨‍🎓 Sala de Guardia</h2>
-            <p className="text-muted">Pacientes aguardando atención en tiempo real.</p>
+            <p className="text-muted">Gestión de pacientes en tiempo real.</p>
         </div>
         <Badge bg="secondary" className="p-2">🟢 Sistema Online</Badge>
       </div>
 
-      {patients.length === 0 ? (
-        <Alert variant="success" className="text-center p-5 shadow-sm border-0">
-          <div style={{ fontSize: '3rem' }}>☕</div>
-          <h4 className="mt-3">Guardia Tranquila</h4>
-          <p className="mb-0">No hay pacientes en sala de espera por el momento.</p>
-        </Alert>
-      ) : (
-        <Row xs={1} md={2} lg={3} className="g-4">
-          {patients.map((patient) => (
-            <Col key={patient.id}>
-              <Card className={`h-100 shadow border-0 ${patient.nivelTriaje === 'ALTA' ? 'border-start border-danger border-5' : 'border-start border-success border-5'}`}>
-                <Card.Body>
-                  <div className="d-flex justify-content-between align-items-start mb-3">
-                    <Badge bg={patient.nivelTriaje === 'ALTA' ? 'danger' : 'success'}>
-                      {patient.nivelTriaje === 'ALTA' ? '🔥 URGENCIA' : '🟢 NORMAL'}
-                    </Badge>
-                    <small className="text-muted">
-                        {patient.fechaEspera ? new Date(patient.fechaEspera).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Reciente'}
-                    </small>
-                  </div>
-                  
-                  <Card.Title className="fw-bold">{patient.nombre || "Usuario Anónimo"}</Card.Title>
-                  
-                  <div className="my-3 p-2 bg-light rounded">
-                    <p className="mb-1 small text-muted">Motivo de consulta:</p>
-                    <strong className="text-dark d-block">
-                        {patient.emocion?.toUpperCase() || 'GENERAL'} 
-                        <span className="ms-2 text-muted">({patient.intensidad}/10)</span>
-                    </strong>
-                  </div>
+      <Tabs defaultActiveKey="waiting" className="mb-4">
+        
+        {/* PESTAÑA 1: SALA DE ESPERA */}
+        <Tab eventKey="waiting" title={`🚨 Sala de Espera (${waitingPatients.length})`}>
+            {waitingPatients.length === 0 ? (
+                <Alert variant="success" className="text-center p-5 border-0 shadow-sm">
+                    <h4>☕ Guardia Tranquila</h4>
+                    <p>No hay pacientes nuevos esperando.</p>
+                </Alert>
+            ) : (
+                <Row xs={1} md={2} lg={3} className="g-4">
+                    {waitingPatients.map(p => (
+                        <Col key={p.id}>
+                            <Card className={`h-100 shadow-sm border-0 border-start border-5 ${p.nivelTriaje === 'ALTA' ? 'border-danger' : 'border-success'}`}>
+                                <Card.Body>
+                                    <Badge bg={p.nivelTriaje === 'ALTA' ? 'danger' : 'success'} className="mb-2">
+                                        {p.nivelTriaje === 'ALTA' ? '🔥 URGENCIA' : '🟢 NUEVO'}
+                                    </Badge>
+                                    <Card.Title>{p.nombre}</Card.Title>
+                                    <Card.Text><strong>{p.emocion}</strong> ({p.intensidad}/10)</Card.Text>
+                                    <Button variant="outline-primary" className="w-100" onClick={() => handleJoinChat(p.id, true)}>
+                                        💬 Tomar Caso
+                                    </Button>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
+            )}
+        </Tab>
 
-                  <div className="d-grid">
-                    <Button variant={patient.nivelTriaje === 'ALTA' ? 'danger' : 'primary'} onClick={() => handleJoinChat(patient.id)}>
-                      💬 Atender Ahora
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
+        {/* PESTAÑA 2: MIS CASOS */}
+        <Tab eventKey="active" title={`📂 Mis Casos Activos (${myPatients.length})`}>
+            {myPatients.length === 0 ? (
+                <Alert variant="light" className="text-center p-5 border text-muted">
+                    <h4>📂 Sin casos activos</h4>
+                    <p>Tus pacientes que estés atendiendo aparecerán aquí.</p>
+                </Alert>
+            ) : (
+                <Row xs={1} md={2} lg={3} className="g-4">
+                    {myPatients.map(p => (
+                        <Col key={p.id}>
+                            <Card className="h-100 shadow-sm border-0 border-start border-primary border-5">
+                                <Card.Body>
+                                    <Badge bg="primary" className="mb-2">EN CURSO</Badge>
+                                    <Card.Title>{p.nombre}</Card.Title>
+                                    <Card.Text className="small text-muted">
+                                        Iniciado: {new Date(p.fechaInicioAtencion).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </Card.Text>
+                                    <div className="d-grid gap-2">
+                                        <Button variant="primary" onClick={() => handleJoinChat(p.id, false)}>
+                                            Reanudar Chat
+                                        </Button>
+                                        <Button variant="outline-danger" size="sm">
+                                            Finalizar Caso
+                                        </Button>
+                                    </div>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
+            )}
+        </Tab>
+
+      </Tabs>
     </Container>
   );
 };

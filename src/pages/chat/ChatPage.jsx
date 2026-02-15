@@ -155,7 +155,7 @@ const ChatPage = () => {
         </Card.Footer>
       </Card>
 
-      <SessionCloseModal show={showCloseModal} handleClose={() => setShowCloseModal(false)} />
+      <SessionCloseModal show={showCloseModal} handleClose={() => setShowCloseModal(false)} patientId={roomId} />
       <Modal show={showCrisisModal} onHide={() => setShowCrisisModal(false)} centered>
         <Modal.Header className="bg-warning border-0 text-dark"><Modal.Title>🫂 Queremos cuidarte</Modal.Title></Modal.Header>
         <Modal.Body className="p-4 text-center">
