@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+// 👇 1. IMPORTAMOS Link AQUÍ 👇
+import { useNavigate, Link } from 'react-router-dom';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState({ name: '', role: '', uniId: null });
 
-  // 1. Cargar datos del usuario al entrar
+  // Cargar datos del usuario al entrar
   useEffect(() => {
     const name = localStorage.getItem('usuarioNombre');
     const role = localStorage.getItem('usuarioRol');
@@ -24,9 +25,15 @@ const DashboardPage = () => {
   // =========================================================
   const PatientView = () => (
     <>
-      <div className="mb-4">
-        <h2 className="fw-bold text-dark">Hola, {user.name} 👋</h2>
-        <p className="text-muted">¿Cómo te sientes hoy? Estamos aquí para acompañarte.</p>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold text-dark">Hola, {user.name} 👋</h2>
+          <p className="text-muted mb-0">¿Cómo te sientes hoy? Estamos aquí para acompañarte.</p>
+        </div>
+        {/* 👇 BOTÓN DE PERFIL 👇 */}
+        <Link to="/profile" className="btn btn-outline-primary shadow-sm">
+          👤 Mi Perfil
+        </Link>
       </div>
       <Row className="g-4">
         <Col md={6} lg={4}>
@@ -36,8 +43,8 @@ const DashboardPage = () => {
               <h4 className="fw-bold text-success">Sala de Vínculo</h4>
               <p className="small text-muted">Habla con un estudiante supervisado.</p>
               <Button variant="success" className="w-100 mt-3" onClick={() => navigate('/waiting-room')}>
-  Solicitar Ayuda (Triaje)
-</Button>
+                Solicitar Ayuda (Triaje)
+              </Button>
             </Card.Body>
           </Card>
         </Col>
@@ -59,16 +66,21 @@ const DashboardPage = () => {
   // =========================================================
   const StudentView = () => (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="fw-bold text-primary">Estudiante: {user.name} 🎓</h2>
-          <Badge bg="primary" className="me-2">Práctica Supervisada</Badge>
+          <h2 className="fw-bold text-primary mb-1">Estudiante: {user.name} 🎓</h2>
+          <Badge bg="primary">Práctica Supervisada</Badge>
         </div>
         
-        {/* 👇 BOTÓN NUEVO PARA IR A LA GUARDIA 👇 */}
-        <Button variant="danger" size="lg" onClick={() => navigate('/guardia')}>
-            🔥 Ir a la Guardia (Tiempo Real)
-        </Button>
+        <div className="d-flex gap-2">
+          {/* 👇 BOTÓN DE PERFIL 👇 */}
+          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">
+            👤 Mi Perfil
+          </Link>
+          <Button variant="danger" size="lg" onClick={() => navigate('/guardia')}>
+              🔥 Ir a la Guardia
+          </Button>
+        </div>
       </div>
 
       <Row className="g-4">
@@ -122,9 +134,15 @@ const DashboardPage = () => {
   // =========================================================
   const TutorView = () => (
     <>
-      <div className="mb-4">
-        <h2 className="fw-bold text-dark">Panel de Supervisión 👁️</h2>
-        <p className="text-muted">Docente: {user.name}</p>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold text-dark">Panel de Supervisión 👁️</h2>
+          <p className="text-muted mb-0">Docente: {user.name}</p>
+        </div>
+        {/* 👇 BOTÓN DE PERFIL 👇 */}
+        <Link to="/profile" className="btn btn-outline-primary shadow-sm">
+          👤 Mi Perfil
+        </Link>
       </div>
 
       <Row className="g-4 mb-4">
@@ -179,13 +197,17 @@ const DashboardPage = () => {
   // =========================================================
   const InstitutionView = () => (
     <>
-      <div className="mb-4 border-bottom pb-3 d-flex justify-content-between align-items-end">
+      <div className="mb-4 border-bottom pb-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
-          <h2 className="fw-bold text-dark">🏛️ {user.name}</h2>
+          <h2 className="fw-bold text-dark mb-1">🏛️ {user.name}</h2>
           <p className="text-muted mb-0">Panel de Gestión de Convenios y Datos Epidemiológicos</p>
         </div>
-        <div className="d-none d-md-block">
-            <Button variant="outline-dark" size="sm">📅 Exportar Reporte Mensual</Button>
+        <div className="d-flex gap-2">
+          {/* 👇 BOTÓN DE PERFIL 👇 */}
+          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">
+            👤 Mi Perfil
+          </Link>
+          <Button variant="outline-dark" size="sm">📅 Exportar Reporte</Button>
         </div>
       </div>
 
