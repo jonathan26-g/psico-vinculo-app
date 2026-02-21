@@ -1,63 +1,109 @@
 import React, { useState } from 'react';
-import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Container, Card, Form, Button, Alert, Row, Col, Spinner } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+
+// 🔥 IMPORTAMOS FIREBASE
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore"; 
+import { auth, db } from '../../firebase/config';
 
 const InstitutionRegister = () => {
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
     email: '',
-    telefono: '', // <--- NUEVO
+    telefono: '',
     institucion: '',
     rol: 'tutor', 
-    matricula: '', // <--- NUEVO (Importante para profesionales)
+    matricula: '', 
     password: '',
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (formData.password.length < 6) {
-      setError('⚠️ La contraseña debe tener al menos 6 caracteres.');
-      return;
+      return setError('⚠️ La contraseña debe tener al menos 6 caracteres.');
     }
     
-    if (!formData.email.includes('.edu') && !formData.email.includes('.gob') && !formData.email.includes('.org')) {
-      setError('⚠️ Por favor utilice un correo institucional válido (.edu, .gob, .org).');
-      return;
-    }
-
     // Validación de Matrícula (Solo si es Tutor)
     if (formData.rol === 'tutor' && formData.matricula.length < 4) {
-      setError('⚠️ Es obligatorio ingresar una matrícula profesional válida para tutores.');
-      return;
+      return setError('⚠️ Es obligatorio ingresar una matrícula profesional válida para tutores.');
     }
 
-    setShowSuccess(true);
+    setLoading(true);
+
+    try {
+      // 🔥 1. CREAR USUARIO EN GOOGLE (Auth)
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // 🔥 2. GUARDAR EN BASE DE DATOS (Firestore)
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        nombre: `${formData.nombre} ${formData.apellido}`,
+        email: formData.email,
+        telefono: formData.telefono,
+        institucion: formData.institucion,
+        rol: formData.rol, // 'tutor' o 'admin'
+        matricula: formData.rol === 'tutor' ? formData.matricula : null,
+        fechaRegistro: new Date().toISOString(),
+      });
+
+      console.log("Tutor registrado exitosamente:", user.email);
+      
+      // 🔥 3. GUARDAR EN MEMORIA (LocalStorage)
+      localStorage.setItem('usuarioRol', formData.rol);
+      localStorage.setItem('usuarioNombre', `${formData.nombre} ${formData.apellido}`);
+      localStorage.setItem('usuarioEmail', formData.email);
+      localStorage.setItem('usuarioId', user.uid); 
+
+      setShowSuccess(true);
+
+    } catch (err) {
+      console.error("Error al registrar institución/tutor:", err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('⚠️ Ese correo ya está registrado. Intenta iniciar sesión.');
+      } else {
+        setError('⚠️ Hubo un error al crear la cuenta. Intenta nuevamente.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 🔥 PANTALLA DE ÉXITO REAL (Con botón para ir al Panel)
   if (showSuccess) {
     return (
       <Container className="py-5 mt-5">
         <Card className="text-center p-5 shadow border-0" style={{borderTop: '5px solid #6f42c1'}}>
           <div className="display-1 mb-3">🎓</div>
-          <h2 className="text-dark fw-bold">Solicitud Enviada</h2>
-          <p className="lead">Gracias por registrarse, {formData.nombre}.</p>
+          <h2 className="text-dark fw-bold">¡Cuenta Creada con Éxito!</h2>
+          <p className="lead">Bienvenido/a, {formData.nombre}.</p>
           <p className="text-muted">
-            Su solicitud y matrícula (<strong>{formData.matricula || "N/A"}</strong>) están siendo verificadas.<br/>
-            Recibirá un correo en <strong>{formData.email}</strong> cuando su cuenta sea habilitada.
+            Tu perfil de <strong>{formData.rol === 'tutor' ? 'Tutor Supervisor' : 'Administrador'}</strong> está listo.<br/>
+            {formData.rol === 'tutor' && <>Matrícula registrada: <strong>{formData.matricula}</strong><br/></>}
           </p>
-          <Link to="/login">
-            <Button variant="outline-dark" size="lg" className="mt-3">Volver al Inicio</Button>
-          </Link>
+          <Button 
+            variant="dark" 
+            size="lg" 
+            className="mt-3" 
+            onClick={() => navigate('/dashboard')}
+            style={{ backgroundColor: '#6f42c1', border: 'none' }}
+          >
+            Ir a mi Panel de Control
+          </Button>
         </Card>
       </Container>
     );
@@ -95,7 +141,7 @@ const InstitutionRegister = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>Correo Institucional</Form.Label>
-                <Form.Control type="email" name="email" placeholder="ejemplo@unt.edu.ar" value={formData.email} onChange={handleChange} required />
+                <Form.Control type="email" name="email" placeholder="tutor@universidad.edu.ar" value={formData.email} onChange={handleChange} required />
               </Form.Group>
             </Col>
             <Col md={6}>
@@ -124,13 +170,13 @@ const InstitutionRegister = () => {
                  <Form.Label>Rol Solicitado</Form.Label>
                  <Form.Select name="rol" value={formData.rol} onChange={handleChange}>
                     <option value="tutor">Profesor Tutor (Requiere Matrícula)</option>
-                    <option value="admin">Administrador / Gestión</option>
+                    <option value="institucion">Administrador Institucional</option>
                  </Form.Select>
                </Form.Group>
             </Col>
           </Row>
 
-          {/* CAMPO CONDICIONAL: Solo mostramos Matrícula si el rol es TUTOR */}
+          {/* CAMPO CONDICIONAL: Matrícula */}
           {formData.rol === 'tutor' && (
             <Form.Group className="mb-3 bg-light p-3 rounded border">
               <Form.Label className="fw-bold text-dark">N° de Matrícula Profesional</Form.Label>
@@ -142,9 +188,6 @@ const InstitutionRegister = () => {
                 onChange={handleChange} 
                 required 
               />
-              <Form.Text className="text-muted small">
-                Este dato será contrastado con el Colegio de Psicólogos para habilitar su cuenta.
-              </Form.Text>
             </Form.Group>
           )}
 
@@ -153,8 +196,13 @@ const InstitutionRegister = () => {
             <Form.Control type="password" name="password" placeholder="******" value={formData.password} onChange={handleChange} required />
           </Form.Group>
 
-          <Button type="submit" className="w-100 mb-3 text-white fw-bold" style={{ backgroundColor: '#6f42c1', border: 'none' }}>
-            Enviar Solicitud de Alta
+          <Button 
+            type="submit" 
+            className="w-100 mb-3 text-white fw-bold" 
+            style={{ backgroundColor: '#6f42c1', border: 'none' }}
+            disabled={loading}
+          >
+            {loading ? <Spinner as="span" animation="border" size="sm" /> : "Enviar Solicitud de Alta"}
           </Button>
 
           <div className="text-center border-top pt-3">

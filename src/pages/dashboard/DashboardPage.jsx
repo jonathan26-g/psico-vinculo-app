@@ -1,28 +1,190 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert } from 'react-bootstrap';
-// 👇 1. IMPORTAMOS Link AQUÍ 👇
+import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert, Modal, Spinner } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
+// 🔥 Importamos Firebase para el Tutor
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
+// =========================================================
+// 👨‍🏫 VISTA TUTOR / SUPERVISOR (AHORA CONECTADA A FIREBASE)
+// =========================================================
+const TutorView = ({ userName }) => {
+  const [finalizedCases, setFinalizedCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para el Modal del Informe
+  const [showModal, setShowModal] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
+
+  useEffect(() => {
+    // 📡 Escuchamos TODOS los pacientes que ya fueron "finalizados"
+    const q = query(collection(db, 'users'), where('estado', '==', 'finalizado'));
+    
+    const unsub = onSnapshot(q, (snapshot) => {
+      setFinalizedCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Calculamos estadísticas reales
+  const highRiskCount = finalizedCases.filter(c => c.informeClinico?.riesgo === 'alto').length;
+  const totalCases = finalizedCases.length;
+
+  const handleOpenReport = (patientCase) => {
+    setSelectedCase(patientCase);
+    setShowModal(true);
+  };
+
+  return (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold text-dark">Panel de Supervisión 👁️</h2>
+          <p className="text-muted mb-0">Docente: {userName}</p>
+        </div>
+        <Link to="/profile" className="btn btn-outline-primary shadow-sm">
+          👤 Mi Perfil
+        </Link>
+      </div>
+
+      <Row className="g-4 mb-4">
+        <Col md={4}>
+          <Card className="border-0 shadow-sm text-center p-3 border-bottom border-danger border-3">
+            <h3 className="fw-bold text-danger">{loading ? '-' : highRiskCount}</h3>
+            <span className="text-muted small">Alertas de Riesgo Alto</span>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="border-0 shadow-sm text-center p-3 border-bottom border-primary border-3">
+            <h3 className="fw-bold text-primary">{loading ? '-' : totalCases}</h3>
+            <span className="text-muted small">Casos Finalizados (Total)</span>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-white fw-bold d-flex justify-content-between align-items-center">
+          <span>Auditoría de Informes Clínicos</span>
+          {loading && <Spinner animation="border" size="sm" variant="primary" />}
+        </Card.Header>
+        <Card.Body>
+          {finalizedCases.length === 0 && !loading ? (
+            <div className="text-center text-muted p-4">No hay casos finalizados para auditar aún.</div>
+          ) : (
+            <Table hover responsive className="align-middle">
+              <thead>
+                <tr>
+                  <th>Paciente (ID)</th>
+                  <th>Motivo Inicial</th>
+                  <th>Nivel de Riesgo</th>
+                  <th>Fecha de Cierre</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {finalizedCases.map(c => (
+                  <tr key={c.id}>
+                    <td>
+                      <strong>{c.nombre}</strong><br/>
+                      <small className="text-muted">ID: {c.id.slice(0, 6)}</small>
+                    </td>
+                    <td>{c.emocion || 'No especificado'}</td>
+                    <td>
+                      {c.informeClinico?.riesgo === 'alto' && <Badge bg="danger">Alto 🚨</Badge>}
+                      {c.informeClinico?.riesgo === 'medio' && <Badge bg="warning" text="dark">Medio</Badge>}
+                      {c.informeClinico?.riesgo === 'bajo' && <Badge bg="success">Bajo</Badge>}
+                      {!c.informeClinico?.riesgo && <Badge bg="secondary">N/A</Badge>}
+                    </td>
+                    <td>
+                        <small className="text-muted">Reciente</small>
+                    </td>
+                    <td>
+                      <Button size="sm" variant="outline-primary" onClick={() => handleOpenReport(c)}>
+                        📑 Leer Informe
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* 📄 MODAL PARA LEER EL INFORME */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fw-bold text-primary">
+            📑 Informe Clínico - Caso #{selectedCase?.id?.slice(0,6)}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          {selectedCase && (
+            <>
+              <Row className="mb-4">
+                <Col md={6}>
+                  <p className="mb-1 text-muted small">Paciente</p>
+                  <h5 className="fw-bold">{selectedCase.nombre}</h5>
+                </Col>
+                <Col md={6}>
+                  <p className="mb-1 text-muted small">Atendido por (ID Alumno)</p>
+                  <h5 className="fw-bold">{selectedCase.atendidoPor || 'Desconocido'}</h5>
+                </Col>
+              </Row>
+              
+              <div className="bg-light p-3 rounded border mb-3">
+                <h6 className="fw-bold mb-2">Motivo de Consulta Diagnosticado</h6>
+                <p className="mb-0 text-capitalize">{selectedCase.informeClinico?.motivo || 'No especificado'}</p>
+              </div>
+
+              <div className="bg-light p-3 rounded border mb-3">
+                <h6 className="fw-bold mb-2">Evaluación de Riesgo</h6>
+                <p className="mb-0 text-capitalize text-danger fw-bold">
+                  {selectedCase.informeClinico?.riesgo || 'No evaluado'}
+                </p>
+              </div>
+
+              <div className="bg-light p-3 rounded border">
+                <h6 className="fw-bold mb-2">Notas del Profesional (Privado)</h6>
+                <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                  {selectedCase.informeClinico?.notas || 'El alumno no dejó notas detalladas.'}
+                </p>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>Cerrar</Button>
+          <Button variant="success">✅ Aprobar Práctica</Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
+};
+
+
+// =========================================================
+// COMPONENTE PRINCIPAL: DashboardPage
+// =========================================================
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState({ name: '', role: '', uniId: null });
 
-  // Cargar datos del usuario al entrar
   useEffect(() => {
     const name = localStorage.getItem('usuarioNombre');
     const role = localStorage.getItem('usuarioRol');
     const uniId = localStorage.getItem('usuarioUniversidadId');
 
     if (!name) {
-      navigate('/login'); // Si no hay nadie, mandar al login
+      navigate('/login');
     } else {
       setUser({ name, role, uniId });
     }
   }, [navigate]);
 
-  // =========================================================
-  // 🏥 VISTA PACIENTE
-  // =========================================================
+  // VISTA PACIENTE
   const PatientView = () => (
     <>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -30,10 +192,7 @@ const DashboardPage = () => {
           <h2 className="fw-bold text-dark">Hola, {user.name} 👋</h2>
           <p className="text-muted mb-0">¿Cómo te sientes hoy? Estamos aquí para acompañarte.</p>
         </div>
-        {/* 👇 BOTÓN DE PERFIL 👇 */}
-        <Link to="/profile" className="btn btn-outline-primary shadow-sm">
-          👤 Mi Perfil
-        </Link>
+        <Link to="/profile" className="btn btn-outline-primary shadow-sm">👤 Mi Perfil</Link>
       </div>
       <Row className="g-4">
         <Col md={6} lg={4}>
@@ -61,9 +220,7 @@ const DashboardPage = () => {
     </>
   );
 
-  // =========================================================
-  // 🎓 VISTA ALUMNO (Prácticas y Horas)
-  // =========================================================
+  // VISTA ALUMNO
   const StudentView = () => (
     <>
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -71,57 +228,27 @@ const DashboardPage = () => {
           <h2 className="fw-bold text-primary mb-1">Estudiante: {user.name} 🎓</h2>
           <Badge bg="primary">Práctica Supervisada</Badge>
         </div>
-        
         <div className="d-flex gap-2">
-          {/* 👇 BOTÓN DE PERFIL 👇 */}
-          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">
-            👤 Mi Perfil
-          </Link>
-          <Button variant="danger" size="lg" onClick={() => navigate('/guardia')}>
-              🔥 Ir a la Guardia
-          </Button>
+          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">👤 Mi Perfil</Link>
+          <Button variant="danger" size="lg" onClick={() => navigate('/guardia')}>🔥 Ir a la Guardia</Button>
         </div>
       </div>
-
       <Row className="g-4">
         <Col md={8}>
           <Card className="border-0 shadow-sm mb-4">
-            <Card.Header className="bg-white fw-bold py-3">Mis Pacientes Activos</Card.Header>
+            <Card.Header className="bg-white fw-bold py-3">Resumen de Prácticas</Card.Header>
             <Card.Body>
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>Paciente</th>
-                    <th>Estado</th>
-                    <th>Última Sesión</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Juan (Anónimo)</td>
-                    <td><Badge bg="success">En curso</Badge></td>
-                    <td>Ayer 18:30</td>
-                    <td><Button size="sm" variant="outline-primary" onClick={() => navigate('/chat')}>Ver Chat</Button></td>
-                  </tr>
-                  <tr>
-                    <td>Caso #402</td>
-                    <td><Badge bg="warning">Supervisión Pendiente</Badge></td>
-                    <td>03 Feb</td>
-                    <td><Button size="sm" variant="outline-dark">Consultar Tutor</Button></td>
-                  </tr>
-                </tbody>
-              </Table>
+               <p className="text-muted">Tu actividad principal ocurre en la Sala de Guardia.</p>
+               <Button variant="outline-primary" onClick={() => navigate('/guardia')}>Abrir mi Guardia</Button>
             </Card.Body>
           </Card>
         </Col>
-        
         <Col md={4}>
           <Card className="border-0 shadow-sm bg-primary text-white">
             <Card.Body className="p-4">
               <h5>Progreso Académico</h5>
               <ProgressBar variant="info" now={25} label="25%" className="my-3 bg-white bg-opacity-25" />
-              <p className="small">Recuerda completar tus informes después de cada sesión para que el tutor te apruebe las horas.</p>
+              <p className="small">Recuerda completar tus informes después de cada sesión.</p>
             </Card.Body>
           </Card>
         </Col>
@@ -129,72 +256,7 @@ const DashboardPage = () => {
     </>
   );
 
-  // =========================================================
-  // 👨‍🏫 VISTA TUTOR / SUPERVISOR
-  // =========================================================
-  const TutorView = () => (
-    <>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="fw-bold text-dark">Panel de Supervisión 👁️</h2>
-          <p className="text-muted mb-0">Docente: {user.name}</p>
-        </div>
-        {/* 👇 BOTÓN DE PERFIL 👇 */}
-        <Link to="/profile" className="btn btn-outline-primary shadow-sm">
-          👤 Mi Perfil
-        </Link>
-      </div>
-
-      <Row className="g-4 mb-4">
-        <Col md={4}>
-          <Card className="border-0 shadow-sm text-center p-3">
-            <h3 className="fw-bold text-danger">3</h3>
-            <span className="text-muted small">Alertas de Riesgo</span>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="border-0 shadow-sm text-center p-3">
-            <h3 className="fw-bold text-primary">15</h3>
-            <span className="text-muted small">Alumnos a Cargo</span>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="border-0 shadow-sm">
-        <Card.Header className="bg-white fw-bold">Auditoría de Chats Recientes</Card.Header>
-        <Card.Body>
-          <Table hover>
-            <thead>
-              <tr>
-                <th>Alumno</th>
-                <th>Paciente (ID)</th>
-                <th>Alerta Detectada</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Maria Gomez</td>
-                <td>#9921</td>
-                <td><Badge bg="danger">Palabra Clave: "Tristeza"</Badge></td>
-                <td><Button size="sm" variant="danger">Intervenir</Button></td>
-              </tr>
-              <tr>
-                <td>Juan Perez</td>
-                <td>#1102</td>
-                <td><Badge bg="success">Normal</Badge></td>
-                <td><Button size="sm" variant="outline-secondary">Revisar</Button></td>
-              </tr>
-            </tbody>
-          </Table>
-        </Card.Body>
-      </Card>
-    </>
-  );
-
-  // =========================================================
-  // 🏛️ VISTA INSTITUCIÓN (ACTUALIZADA CON ESTADÍSTICAS) 📊
-  // =========================================================
+  // VISTA INSTITUCIÓN
   const InstitutionView = () => (
     <>
       <div className="mb-4 border-bottom pb-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -203,113 +265,22 @@ const DashboardPage = () => {
           <p className="text-muted mb-0">Panel de Gestión de Convenios y Datos Epidemiológicos</p>
         </div>
         <div className="d-flex gap-2">
-          {/* 👇 BOTÓN DE PERFIL 👇 */}
-          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">
-            👤 Mi Perfil
-          </Link>
+          <Link to="/profile" className="btn btn-outline-primary shadow-sm d-flex align-items-center">👤 Mi Perfil</Link>
           <Button variant="outline-dark" size="sm">📅 Exportar Reporte</Button>
         </div>
       </div>
-
       <Row className="g-4 mb-4">
-        <Col md={4}>
-          <Card className="bg-dark text-white h-100 shadow-sm">
-            <Card.Body>
-              <h6 className="opacity-75">Alumnos Inscritos</h6>
-              <h2 className="display-6 fw-bold">142</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="bg-success text-white h-100 shadow-sm">
-            <Card.Body>
-              <h6 className="opacity-75">Pacientes Atendidos</h6>
-              <h2 className="display-6 fw-bold">850</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="bg-warning text-dark h-100 shadow-sm">
-            <Card.Body>
-              <h6 className="opacity-75">Horas Práctica</h6>
-              <h2 className="display-6 fw-bold">3,200 hs</h2>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      <Row className="mb-4">
-        {/* GRÁFICO DE BARRAS DE INVESTIGACIÓN */}
-        <Col lg={8}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header className="bg-white fw-bold py-3">
-              📈 Principales Motivos de Consulta (Investigación)
-            </Card.Header>
-            <Card.Body>
-              
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small mb-1">
-                  <span>Ansiedad y Estrés Académico</span>
-                  <span className="fw-bold">45%</span>
-                </div>
-                <ProgressBar variant="danger" now={45} style={{ height: '10px' }} />
-              </div>
-
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small mb-1">
-                  <span>Depresión y Soledad</span>
-                  <span className="fw-bold">30%</span>
-                </div>
-                <ProgressBar variant="warning" now={30} style={{ height: '10px' }} />
-              </div>
-
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small mb-1">
-                  <span>Problemas de Pareja / Vínculos</span>
-                  <span className="fw-bold">15%</span>
-                </div>
-                <ProgressBar variant="info" now={15} style={{ height: '10px' }} />
-              </div>
-
-              <div className="mb-0">
-                <div className="d-flex justify-content-between small mb-1">
-                  <span>Orientación Vocacional</span>
-                  <span className="fw-bold">10%</span>
-                </div>
-                <ProgressBar variant="success" now={10} style={{ height: '10px' }} />
-              </div>
-
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* COLUMNA LATERAL */}
-        <Col lg={4}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <h5 className="fw-bold mb-3">Estado del Convenio</h5>
-              <Alert variant="info" className="small">
-                ✅ <strong>Activo</strong> hasta Dic 2026. <br/>
-                Seguro: <strong>Vigente</strong>.
-              </Alert>
-              <div className="d-grid gap-2">
-                <Button variant="outline-dark" size="sm">Gestionar Alumnos</Button>
-                <Button variant="outline-dark" size="sm">Auditoría Legal</Button>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
+        <Col md={4}><Card className="bg-dark text-white h-100 shadow-sm"><Card.Body><h6 className="opacity-75">Alumnos Inscritos</h6><h2 className="display-6 fw-bold">142</h2></Card.Body></Card></Col>
+        <Col md={4}><Card className="bg-success text-white h-100 shadow-sm"><Card.Body><h6 className="opacity-75">Pacientes Atendidos</h6><h2 className="display-6 fw-bold">850</h2></Card.Body></Card></Col>
+        <Col md={4}><Card className="bg-warning text-dark h-100 shadow-sm"><Card.Body><h6 className="opacity-75">Horas Práctica</h6><h2 className="display-6 fw-bold">3,200 hs</h2></Card.Body></Card></Col>
       </Row>
     </>
   );
 
-  // =========================================================
-  // 🔄 RENDERIZADO CONDICIONAL
-  // =========================================================
   const renderContent = () => {
     switch(user.role) {
       case 'alumno': return <StudentView />;
-      case 'tutor': return <TutorView />;
+      case 'tutor': return <TutorView userName={user.name} />;
       case 'institucion': return <InstitutionView />;
       default: return <PatientView />;
     }
