@@ -1,40 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert, Modal, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Table, ProgressBar, Alert, Modal, Spinner, Tabs, Tab } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
-// 🔥 Importamos Firebase para el Tutor
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+// 🔥 Importamos las herramientas de Firebase
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 // =========================================================
-// 👨‍🏫 VISTA TUTOR / SUPERVISOR (AHORA CONECTADA A FIREBASE)
+// 👨‍🏫 VISTA TUTOR / SUPERVISOR (Tiempo Real + Auditoría)
 // =========================================================
 const TutorView = ({ userName }) => {
-  const [finalizedCases, setFinalizedCases] = useState([]);
+  const navigate = useNavigate();
+  
+  // Listas de pacientes
+  const [activeCases, setActiveCases] = useState([]); // Casos en vivo
+  const [finalizedCases, setFinalizedCases] = useState([]); // Casos terminados
   const [loading, setLoading] = useState(true);
   
-  // Estados para el Modal del Informe
+  // Estados para el Modal
   const [showModal, setShowModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
-    // 📡 Escuchamos TODOS los pacientes que ya fueron "finalizados"
-    const q = query(collection(db, 'users'), where('estado', '==', 'finalizado'));
-    
-    const unsub = onSnapshot(q, (snapshot) => {
+    // 1. 📡 Escuchar casos EN VIVO (estado: 'en_consulta')
+    const qActive = query(collection(db, 'users'), where('estado', '==', 'en_consulta'));
+    const unsubActive = onSnapshot(qActive, (snapshot) => {
+      setActiveCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // 2. 📡 Escuchar casos FINALIZADOS (estado: 'finalizado')
+    const qFinalized = query(collection(db, 'users'), where('estado', '==', 'finalizado'));
+    const unsubFinalized = onSnapshot(qFinalized, (snapshot) => {
       setFinalizedCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
-    return () => unsub();
+    return () => {
+      unsubActive();
+      unsubFinalized();
+    };
   }, []);
-
-  // Calculamos estadísticas reales
-  const highRiskCount = finalizedCases.filter(c => c.informeClinico?.riesgo === 'alto').length;
-  const totalCases = finalizedCases.length;
 
   const handleOpenReport = (patientCase) => {
     setSelectedCase(patientCase);
     setShowModal(true);
+  };
+
+  // 🔥 FUNCIÓN PARA APROBAR LA PRÁCTICA (Guarda en BD)
+  const handleApprove = async () => {
+    if (!selectedCase) return;
+    setApproving(true);
+    try {
+      await updateDoc(doc(db, 'users', selectedCase.id), {
+        supervisado: true // Marca de agua del profesor
+      });
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error al aprobar:", error);
+      alert("Hubo un error al aprobar la práctica.");
+    } finally {
+      setApproving(false);
+    }
   };
 
   return (
@@ -49,71 +75,108 @@ const TutorView = ({ userName }) => {
         </Link>
       </div>
 
-      <Row className="g-4 mb-4">
-        <Col md={4}>
-          <Card className="border-0 shadow-sm text-center p-3 border-bottom border-danger border-3">
-            <h3 className="fw-bold text-danger">{loading ? '-' : highRiskCount}</h3>
-            <span className="text-muted small">Alertas de Riesgo Alto</span>
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="border-0 shadow-sm text-center p-3 border-bottom border-primary border-3">
-            <h3 className="fw-bold text-primary">{loading ? '-' : totalCases}</h3>
-            <span className="text-muted small">Casos Finalizados (Total)</span>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="border-0 shadow-sm">
-        <Card.Header className="bg-white fw-bold d-flex justify-content-between align-items-center">
-          <span>Auditoría de Informes Clínicos</span>
-          {loading && <Spinner animation="border" size="sm" variant="primary" />}
-        </Card.Header>
+      <Card className="border-0 shadow-sm mb-4">
         <Card.Body>
-          {finalizedCases.length === 0 && !loading ? (
-            <div className="text-center text-muted p-4">No hay casos finalizados para auditar aún.</div>
-          ) : (
-            <Table hover responsive className="align-middle">
-              <thead>
-                <tr>
-                  <th>Paciente (ID)</th>
-                  <th>Motivo Inicial</th>
-                  <th>Nivel de Riesgo</th>
-                  <th>Fecha de Cierre</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {finalizedCases.map(c => (
-                  <tr key={c.id}>
-                    <td>
-                      <strong>{c.nombre}</strong><br/>
-                      <small className="text-muted">ID: {c.id.slice(0, 6)}</small>
-                    </td>
-                    <td>{c.emocion || 'No especificado'}</td>
-                    <td>
-                      {c.informeClinico?.riesgo === 'alto' && <Badge bg="danger">Alto 🚨</Badge>}
-                      {c.informeClinico?.riesgo === 'medio' && <Badge bg="warning" text="dark">Medio</Badge>}
-                      {c.informeClinico?.riesgo === 'bajo' && <Badge bg="success">Bajo</Badge>}
-                      {!c.informeClinico?.riesgo && <Badge bg="secondary">N/A</Badge>}
-                    </td>
-                    <td>
-                        <small className="text-muted">Reciente</small>
-                    </td>
-                    <td>
-                      <Button size="sm" variant="outline-primary" onClick={() => handleOpenReport(c)}>
-                        📑 Leer Informe
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+          <Tabs defaultActiveKey="envivo" className="custom-tabs mb-4">
+            
+            {/* PESTAÑA 1: MONITOREO EN VIVO */}
+            <Tab eventKey="envivo" title={<span>🔴 Monitoreo en Vivo ({activeCases.length})</span>}>
+              {activeCases.length === 0 ? (
+                <div className="text-center text-muted p-4 bg-light rounded">
+                  <p className="mb-0">No hay consultas activas en este momento.</p>
+                </div>
+              ) : (
+                <Table hover responsive className="align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Paciente</th>
+                      <th>Atendido por (ID Alumno)</th>
+                      <th>Motivo Inicial</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeCases.map(c => (
+                      <tr key={c.id}>
+                        <td className="fw-bold">{c.nombre}</td>
+                        <td><Badge bg="info" text="dark">{c.atendidoPor || 'Desconocido'}</Badge></td>
+                        <td>{c.emocion || '-'}</td>
+                        <td><Badge bg="danger" className="pulse-animation">En Consulta</Badge></td>
+                        <td>
+                          {/* 🔥 BOTÓN PARA ENTRAR AL CHAT EN TIEMPO REAL */}
+                          <Button size="sm" variant="danger" onClick={() => navigate(`/chat/${c.id}`)}>
+                            👁️ Espectar / Intervenir Chat
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Tab>
+
+            {/* PESTAÑA 2: AUDITORÍA DE INFORMES */}
+            <Tab eventKey="auditoria" title={<span>📑 Informes por Auditar ({finalizedCases.length})</span>}>
+              {loading ? (
+                <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+              ) : finalizedCases.length === 0 ? (
+                <div className="text-center text-muted p-4 bg-light rounded">No hay casos finalizados para auditar.</div>
+              ) : (
+                <Table hover responsive className="align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Paciente (ID)</th>
+                      <th>Motivo Inicial</th>
+                      <th>Riesgo Evaluado</th>
+                      <th>Estado Docente</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finalizedCases.map(c => (
+                      <tr key={c.id}>
+                        <td>
+                          <strong>{c.nombre}</strong><br/>
+                          <small className="text-muted">ID: {c.id.slice(0, 6)}</small>
+                        </td>
+                        <td>{c.emocion || '-'}</td>
+                        <td>
+                          {c.informeClinico?.riesgo === 'alto' && <Badge bg="danger">Alto 🚨</Badge>}
+                          {c.informeClinico?.riesgo === 'medio' && <Badge bg="warning" text="dark">Medio</Badge>}
+                          {c.informeClinico?.riesgo === 'bajo' && <Badge bg="success">Bajo</Badge>}
+                        </td>
+                        <td>
+                          {/* Muestra si el tutor ya lo aprobó o no */}
+                          {c.supervisado ? (
+                            <Badge bg="success">✅ Aprobado</Badge>
+                          ) : (
+                            <Badge bg="secondary">Pendiente Revisión</Badge>
+                          )}
+                        </td>
+                        <td>
+                          <div className="d-flex gap-2">
+                            <Button size="sm" variant="outline-dark" onClick={() => handleOpenReport(c)}>
+                              📑 Leer Informe
+                            </Button>
+                            {/* También puede ver el historial del chat cerrado */}
+                            <Button size="sm" variant="outline-primary" onClick={() => navigate(`/chat/${c.id}`)}>
+                              💬 Ver Chat Histórico
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Tab>
+
+          </Tabs>
         </Card.Body>
       </Card>
 
-      {/* 📄 MODAL PARA LEER EL INFORME */}
+      {/* 📄 MODAL PARA LEER EL INFORME Y APROBAR */}
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fw-bold text-primary">
@@ -135,7 +198,7 @@ const TutorView = ({ userName }) => {
               </Row>
               
               <div className="bg-light p-3 rounded border mb-3">
-                <h6 className="fw-bold mb-2">Motivo de Consulta Diagnosticado</h6>
+                <h6 className="fw-bold mb-2">Motivo Diagnosticado (CIE-10/DSM-5 ref)</h6>
                 <p className="mb-0 text-capitalize">{selectedCase.informeClinico?.motivo || 'No especificado'}</p>
               </div>
 
@@ -147,26 +210,36 @@ const TutorView = ({ userName }) => {
               </div>
 
               <div className="bg-light p-3 rounded border">
-                <h6 className="fw-bold mb-2">Notas del Profesional (Privado)</h6>
+                <h6 className="fw-bold mb-2">Notas Clínicas del Alumno</h6>
                 <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
-                  {selectedCase.informeClinico?.notas || 'El alumno no dejó notas detalladas.'}
+                  {selectedCase.informeClinico?.notas || 'Sin notas.'}
                 </p>
               </div>
             </>
           )}
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cerrar</Button>
-          <Button variant="success">✅ Aprobar Práctica</Button>
+        <Modal.Footer className="justify-content-between">
+          <Badge bg={selectedCase?.supervisado ? "success" : "warning"} text={!selectedCase?.supervisado ? "dark" : "white"}>
+            {selectedCase?.supervisado ? "Estado: Supervisado y Aprobado" : "Estado: Pendiente de Firma"}
+          </Badge>
+          <div>
+            <Button variant="secondary" className="me-2" onClick={() => setShowModal(false)}>Cerrar</Button>
+            
+            {/* Solo mostramos el botón si NO ha sido supervisado aún */}
+            {!selectedCase?.supervisado && (
+              <Button variant="success" onClick={handleApprove} disabled={approving}>
+                {approving ? <Spinner animation="border" size="sm" /> : "✅ Aprobar Práctica"}
+              </Button>
+            )}
+          </div>
         </Modal.Footer>
       </Modal>
     </>
   );
 };
 
-
 // =========================================================
-// COMPONENTE PRINCIPAL: DashboardPage
+// COMPONENTE PRINCIPAL: DashboardPage (Resto sin cambios)
 // =========================================================
 const DashboardPage = () => {
   const navigate = useNavigate();
