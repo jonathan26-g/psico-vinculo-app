@@ -1,137 +1,180 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Badge, Row, Col, Alert, Tab, Tabs } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { db } from '../../firebase/config';
+import { Container, Card, Button, Badge, Tabs, Tab, Table, Spinner } from 'react-bootstrap';
+// 🔥 Importamos lo necesario de Firebase
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
-  const [waitingPatients, setWaitingPatients] = useState([]);
-  const [myPatients, setMyPatients] = useState([]); // 👈 NUEVO ESTADO
   const navigate = useNavigate();
-  const myId = localStorage.getItem('usuarioId'); // Mi ID de alumno
+  const myId = localStorage.getItem('usuarioId');
 
-  // 📡 RADAR 1: Pacientes en Espera (Para todos)
-  useEffect(() => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("estado", "==", "esperando"));
+  // Estados para las tres listas
+  const [waitingPatients, setWaitingPatients] = useState([]);
+  const [myActivePatients, setMyActivePatients] = useState([]);
+  const [myHistory, setMyHistory] = useState([]); // 👈 ¡NUEVO ESTADO PARA EL HISTORIAL!
+  const [loading, setLoading] = useState(true);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setWaitingPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 📡 RADAR 2: Mis Pacientes Activos (Solo míos)
   useEffect(() => {
     if (!myId) return;
 
-    const usersRef = collection(db, "users");
-    // Buscamos usuarios que YO estoy atendiendo y siguen en consulta
-    const q = query(
-        usersRef, 
-        where("atendidoPor", "==", myId), 
-        where("estado", "==", "en_consulta")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMyPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    // 1. 📡 Escuchar "Sala de Espera" (Todos los esperando)
+    const qWaiting = query(collection(db, 'users'), where('estado', '==', 'esperando'));
+    const unsubWaiting = onSnapshot(qWaiting, (snapshot) => {
+      setWaitingPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    return () => unsubscribe();
+
+    // 2. 📡 Escuchar "Mis Casos Activos" (Míos + en_consulta)
+    const qActive = query(
+      collection(db, 'users'),
+      where('estado', '==', 'en_consulta'),
+      where('atendidoPor', '==', myId)
+    );
+    const unsubActive = onSnapshot(qActive, (snapshot) => {
+      setMyActivePatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // 3. 🔥 📡 Escuchar "Mi Historial" (Míos + finalizados)
+    const qHistory = query(
+      collection(db, 'users'),
+      where('estado', '==', 'finalizado'),
+      where('atendidoPor', '==', myId)
+    );
+    const unsubHistory = onSnapshot(qHistory, (snapshot) => {
+      setMyHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
+    });
+
+    // Limpieza al salir de la pantalla
+    return () => {
+      unsubWaiting();
+      unsubActive();
+      unsubHistory();
+    };
   }, [myId]);
 
-
-  const handleJoinChat = async (patientId, isNewCase) => {
+  // Función para tomar el caso y entrar al chat
+  const handleTakeCase = async (patientId) => {
     try {
-      if (isNewCase) {
-        // Solo si es nuevo cambiamos el estado
-        await updateDoc(doc(db, "users", patientId), {
-            estado: 'en_consulta',
-            atendidoPor: myId,
-            fechaInicioAtencion: new Date().toISOString()
-        });
-      }
+      await updateDoc(doc(db, 'users', patientId), {
+        estado: 'en_consulta',
+        atendidoPor: myId
+      });
       navigate(`/chat/${patientId}`);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error al tomar caso:", error);
+      alert("No se pudo tomar el caso.");
     }
   };
 
   return (
-    <Container className="py-5 mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+    <Container className="py-4">
+      <div className="mb-4 d-flex justify-content-between align-items-center">
         <div>
-            <h2 className="fw-bold text-primary">👨‍🎓 Sala de Guardia</h2>
-            <p className="text-muted">Gestión de pacientes en tiempo real.</p>
+          <h2 className="fw-bold text-primary mb-0">👨‍🎓 Sala de Guardia</h2>
+          <p className="text-muted">Gestión de pacientes en tiempo real.</p>
         </div>
-        <Badge bg="secondary" className="p-2">🟢 Sistema Online</Badge>
+        <Button variant="outline-secondary" onClick={() => navigate('/dashboard')}>
+          Volver al Panel
+        </Button>
       </div>
 
-      <Tabs defaultActiveKey="waiting" className="mb-4">
-        
-        {/* PESTAÑA 1: SALA DE ESPERA */}
-        <Tab eventKey="waiting" title={`🚨 Sala de Espera (${waitingPatients.length})`}>
-            {waitingPatients.length === 0 ? (
-                <Alert variant="success" className="text-center p-5 border-0 shadow-sm">
-                    <h4>☕ Guardia Tranquila</h4>
-                    <p>No hay pacientes nuevos esperando.</p>
-                </Alert>
-            ) : (
-                <Row xs={1} md={2} lg={3} className="g-4">
-                    {waitingPatients.map(p => (
-                        <Col key={p.id}>
-                            <Card className={`h-100 shadow-sm border-0 border-start border-5 ${p.nivelTriaje === 'ALTA' ? 'border-danger' : 'border-success'}`}>
-                                <Card.Body>
-                                    <Badge bg={p.nivelTriaje === 'ALTA' ? 'danger' : 'success'} className="mb-2">
-                                        {p.nivelTriaje === 'ALTA' ? '🔥 URGENCIA' : '🟢 NUEVO'}
-                                    </Badge>
-                                    <Card.Title>{p.nombre}</Card.Title>
-                                    <Card.Text><strong>{p.emocion}</strong> ({p.intensidad}/10)</Card.Text>
-                                    <Button variant="outline-primary" className="w-100" onClick={() => handleJoinChat(p.id, true)}>
-                                        💬 Tomar Caso
-                                    </Button>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
-            )}
-        </Tab>
+      <Card className="border-0 shadow-sm">
+        <Card.Body>
+          <Tabs defaultActiveKey="espera" className="mb-4 custom-tabs">
+            
+            {/* PESTAÑA 1: SALA DE ESPERA */}
+            <Tab eventKey="espera" title={<span>🚨 Sala de Espera ({waitingPatients.length})</span>}>
+              {waitingPatients.length === 0 ? (
+                <div className="text-center p-5 bg-light rounded text-muted">
+                  <h5>☕ Guardia Tranquila</h5>
+                  <p>No hay pacientes nuevos esperando.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-wrap gap-3">
+                  {waitingPatients.map(p => (
+                    <Card key={p.id} className="border-danger" style={{ width: '18rem' }}>
+                      <Card.Body>
+                        <Badge bg="danger" className="mb-2">NUEVO</Badge>
+                        <Card.Title className="fw-bold">{p.nombre}</Card.Title>
+                        <Card.Text>
+                          <strong>Motivo:</strong> {p.emocion || 'No especificado'}
+                        </Card.Text>
+                        <Button variant="outline-primary" className="w-100" onClick={() => handleTakeCase(p.id)}>
+                          💬 Tomar Caso
+                        </Button>
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </Tab>
 
-        {/* PESTAÑA 2: MIS CASOS */}
-        <Tab eventKey="active" title={`📂 Mis Casos Activos (${myPatients.length})`}>
-            {myPatients.length === 0 ? (
-                <Alert variant="light" className="text-center p-5 border text-muted">
-                    <h4>📂 Sin casos activos</h4>
-                    <p>Tus pacientes que estés atendiendo aparecerán aquí.</p>
-                </Alert>
-            ) : (
-                <Row xs={1} md={2} lg={3} className="g-4">
-                    {myPatients.map(p => (
-                        <Col key={p.id}>
-                            <Card className="h-100 shadow-sm border-0 border-start border-primary border-5">
-                                <Card.Body>
-                                    <Badge bg="primary" className="mb-2">EN CURSO</Badge>
-                                    <Card.Title>{p.nombre}</Card.Title>
-                                    <Card.Text className="small text-muted">
-                                        Iniciado: {new Date(p.fechaInicioAtencion).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                    </Card.Text>
-                                    <div className="d-grid gap-2">
-                                        <Button variant="primary" onClick={() => handleJoinChat(p.id, false)}>
-                                            Reanudar Chat
-                                        </Button>
-                                        <Button variant="outline-danger" size="sm">
-                                            Finalizar Caso
-                                        </Button>
-                                    </div>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
-            )}
-        </Tab>
+            {/* PESTAÑA 2: CASOS ACTIVOS */}
+            <Tab eventKey="activos" title={<span>📂 Mis Casos Activos ({myActivePatients.length})</span>}>
+              {myActivePatients.length === 0 ? (
+                <div className="text-center p-5 bg-light rounded text-muted">
+                  <p>No tienes pacientes en consulta ahora mismo.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-wrap gap-3">
+                  {myActivePatients.map(p => (
+                    <Card key={p.id} className="border-primary" style={{ width: '18rem' }}>
+                      <Card.Body>
+                        <Badge bg="primary" className="mb-2">EN CURSO</Badge>
+                        <Card.Title className="fw-bold">{p.nombre}</Card.Title>
+                        <Button variant="primary" className="w-100 mt-2" onClick={() => navigate(`/chat/${p.id}`)}>
+                          Reanudar Chat
+                        </Button>
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </Tab>
 
-      </Tabs>
+            {/* 🔥 PESTAÑA 3: MI HISTORIAL (NUEVA) */}
+            <Tab eventKey="historial" title={<span>📚 Mi Historial ({myHistory.length})</span>}>
+              {loading ? (
+                <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+              ) : myHistory.length === 0 ? (
+                <div className="text-center p-5 bg-light rounded text-muted">
+                  <p>Aún no has finalizado ningún caso.</p>
+                </div>
+              ) : (
+                <Table hover responsive className="align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Paciente</th>
+                      <th>Motivo Inicial</th>
+                      <th>Diagnóstico (Informe)</th>
+                      <th>Riesgo</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myHistory.map(p => (
+                      <tr key={p.id}>
+                        <td className="fw-bold">{p.nombre}</td>
+                        <td>{p.emocion || '-'}</td>
+                        <td className="text-capitalize">{p.informeClinico?.motivo || 'Sin informe'}</td>
+                        <td>
+                          {p.informeClinico?.riesgo === 'alto' && <Badge bg="danger">Alto 🚨</Badge>}
+                          {p.informeClinico?.riesgo === 'medio' && <Badge bg="warning" text="dark">Medio</Badge>}
+                          {p.informeClinico?.riesgo === 'bajo' && <Badge bg="success">Bajo</Badge>}
+                          {!p.informeClinico?.riesgo && <Badge bg="secondary">N/A</Badge>}
+                        </td>
+                        <td><Badge bg="dark">Finalizado</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Tab>
+
+          </Tabs>
+        </Card.Body>
+      </Card>
     </Container>
   );
 };
