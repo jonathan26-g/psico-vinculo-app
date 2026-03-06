@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Badge, Spinner, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+
 // 🔥 IMPORTAMOS FIRESTORE
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-// 🔥 IMPORTAMOS FIREBASE AUTH (NUEVO)
+// 🔥 IMPORTAMOS FIREBASE AUTH
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 const ProfilePage = () => {
@@ -16,8 +17,6 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  
-  // 🔥 ESTADO NUEVO PARA EL MENSAJE DE CONTRASEÑA
   const [resetMsg, setResetMsg] = useState(''); 
 
   const [formData, setFormData] = useState({
@@ -37,7 +36,10 @@ const ProfilePage = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
       try {
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
@@ -92,7 +94,6 @@ const ProfilePage = () => {
     }
   };
 
-  // 🔥 FUNCIÓN NUEVA: ENVIAR CORREO DE CAMBIO DE CONTRASEÑA
   const handleResetPassword = async () => {
     const auth = getAuth();
     setResetMsg('');
@@ -101,8 +102,6 @@ const ProfilePage = () => {
     try {
       await sendPasswordResetEmail(auth, email);
       setResetMsg(`📩 Te hemos enviado un enlace a ${email} para cambiar tu contraseña.`);
-      
-      // Borramos el mensaje después de 6 segundos
       setTimeout(() => setResetMsg(''), 6000);
     } catch (error) {
       console.error("Error al enviar el correo:", error);
@@ -132,7 +131,6 @@ const ProfilePage = () => {
             </Row>
           </>
         );
-
       case 'tutor':
         return (
           <>
@@ -150,7 +148,6 @@ const ProfilePage = () => {
             </Row>
           </>
         );
-
       case 'institucion':
         return (
           <>
@@ -165,7 +162,6 @@ const ProfilePage = () => {
             </Row>
           </>
         );
-
       default: 
         return (
           <>
@@ -195,6 +191,7 @@ const ProfilePage = () => {
     }
   };
 
+  // 🔥 EL SPINNER (LOADING) DEBE ESTAR DESPUÉS DE DECLARAR renderFormContent
   if (loading) {
     return (
       <Container className="py-5 mt-5 text-center">

@@ -1,41 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar, Container, Nav, Button, Dropdown } from 'react-bootstrap';
+import { Navbar, Container, Nav, Button } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+// 🔥 Importamos las herramientas de Auth
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 
 const NavbarC = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Hook para detectar cambio de ruta
+  const location = useLocation(); // Volvemos a traer el detector de páginas
   const [user, setUser] = useState(null);
 
-  // EFECTO: Cada vez que cambiamos de página, revisamos si hay usuario
-  useEffect(() => {
+  // Función para buscar el nombre en la memoria
+  const checkStoredUser = () => {
     const storedName = localStorage.getItem('usuarioNombre');
     const storedRole = localStorage.getItem('usuarioRol');
-    
     if (storedName) {
       setUser({ nombre: storedName, rol: storedRole });
-    } else {
-      setUser(null);
     }
-  }, [location]); // Se ejecuta cada vez que 'location' cambia
+  };
+
+  // 1. ESCUCHADOR DE FIREBASE (Detecta Login/Logout)
+  useEffect(() => {
+    const auth = getAuth();
+    
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // Le damos 500ms de ventaja para que el registro termine de guardar el nombre en memoria
+        setTimeout(checkStoredUser, 500);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. ESCUCHADOR DE RUTAS (Por si cambia de página, forzamos la lectura)
+  useEffect(() => {
+    const auth = getAuth();
+    if (auth.currentUser) {
+      checkStoredUser();
+    }
+  }, [location]);
 
   // FUNCIÓN CERRAR SESIÓN
-  const handleLogout = () => {
-    // 1. Borramos los datos
-    localStorage.removeItem('usuarioNombre');
-    localStorage.removeItem('usuarioRol');
-    
-    // 2. Actualizamos el estado local
-    setUser(null);
-    
-    // 3. Redirigimos al Login
-    navigate('/login');
+  const handleLogout = async () => {
+    const auth = getAuth();
+    try {
+      await signOut(auth);
+      
+      localStorage.removeItem('usuarioNombre');
+      localStorage.removeItem('usuarioRol');
+      localStorage.removeItem('usuarioId');
+      localStorage.removeItem('usuarioEmail');
+      
+      navigate('/');
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
   };
 
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm" sticky="top">
       <Container>
-        {/* LOGO */}
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
           <span style={{ fontSize: '1.5rem' }}>👐</span> 
           <span className="fw-bold text-success">Psico-Vínculo</span>
@@ -44,19 +70,16 @@ const NavbarC = () => {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
 
         <Navbar.Collapse id="basic-navbar-nav">
-          {/* ENLACES IZQUIERDA */}
           <Nav className="me-auto mb-3 mb-lg-0">
             <Nav.Link as={Link} to="/">Inicio</Nav.Link>
-            {/* Solo mostramos Dashboard si está logueado */}
             {user && <Nav.Link as={Link} to="/dashboard">Mi Panel</Nav.Link>}
           </Nav>
 
-          {/* ZONA DERECHA: CAMBIA SEGÚN SI ESTÁS LOGUEADO O NO */}
           <Nav className="d-flex flex-column flex-lg-row align-items-lg-center gap-2 gap-lg-3">
             
             {user ? (
-              // --- SI HAY USUARIO (MOSTRAR PERFIL) ---
               <>
+                {/* AHORA SÍ LEERÁ EL NOMBRE CORRECTO */}
                 <span className="fw-bold text-primary d-none d-lg-block">
                   Hola, {user.nombre} 👋
                 </span>
@@ -70,9 +93,7 @@ const NavbarC = () => {
                 </Button>
               </>
             ) : (
-              // --- SI NO HAY USUARIO (MOSTRAR LOGIN/REGISTRO) ---
               <>
-                {/* Versión PC */}
                 <Nav.Link 
                   as={Link} 
                   to="/login" 
@@ -82,7 +103,6 @@ const NavbarC = () => {
                   Iniciar Sesión
                 </Nav.Link>
 
-                {/* Versión Móvil */}
                 <Button 
                   variant="outline-secondary" 
                   className="w-100 rounded-pill d-lg-none"
