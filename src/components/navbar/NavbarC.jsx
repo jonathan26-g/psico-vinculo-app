@@ -72,6 +72,10 @@ const NavbarC = () => {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto mb-3 mb-lg-0">
             <Nav.Link as={Link} to="/">Inicio</Nav.Link>
+            
+            {/* 👇 ESTE ES EL NUEVO ENLACE AL "SOBRE NOSOTROS" 👇 */}
+            <Nav.Link as={Link} to="/sobre-nosotros">Sobre Nosotros</Nav.Link>
+
             {user && <Nav.Link as={Link} to="/dashboard">Mi Panel</Nav.Link>}
           </Nav>
 

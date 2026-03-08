@@ -15,6 +15,7 @@ import InstitutionRegister from './pages/auth/InstitutionRegister';
 import ChatPage from './pages/chat/ChatPage';
 import WaitingRoom from './pages/chat/WaitingRoom'; // ✅ Importado correctamente
 import StudentDashboard from './pages/dashboard/StudentDashboard';
+import AboutPage from './pages/home/AboutPage';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
 
           {/* RUTA DE LA GUARDIA (PANEL DE ALUMNO) */}
 <Route path="/guardia" element={<StudentDashboard />} />
+  <Route path="/sobre-nosotros" element={<AboutPage />} />
         </Routes>
       </div>
       <FooterC />

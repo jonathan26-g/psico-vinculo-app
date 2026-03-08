@@ -1,11 +1,14 @@
 import React from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // 🔥 Agregamos useNavigate aquí
 
 // --- ESTA LÍNEA ES LA QUE FALTA ---
 import './HomePage.css'; 
 // -------
+
 const HomePage = () => {
+  const navigate = useNavigate(); // 🔥 Inicializamos el navegador
+
   return (
     <div className="page-background">
       
@@ -24,7 +27,10 @@ const HomePage = () => {
         </p>
         <div className="d-flex justify-content-center gap-3">
           <Link to="/register"><Button className="btn-primary-custom">Comenzar ahora →</Button></Link>
-          <Button className="btn-outline-custom">Conocer más</Button>
+          {/* 🔥 BOTÓN CONECTADO A SOBRE NOSOTROS 👇 */}
+          <Button className="btn-outline-custom" onClick={() => navigate('/sobre-nosotros')}>
+            Conocer más
+          </Button>
         </div>
       </Container>
 
@@ -56,45 +62,45 @@ const HomePage = () => {
       </Container>
 
       {/* NUEVA SECCIÓN: POR QUÉ PSICO-VÍNCULO */}
-<Container className="py-5 my-5">
-  <Row className="align-items-center g-5">
-    {/* Lado Izquierdo: Texto */}
-    <Col lg={7}>
-      <small className="text-uppercase text-success fw-bold">Por qué Psico-Vínculo</small>
-      <h2 className="hero-title fs-1 mt-2 mb-4">
-        Un puente entre quienes necesitan hablar y quienes aprenden a escuchar
-      </h2>
-      <p className="text-muted mb-4" style={{ fontSize: '1.1rem', lineHeight: '1.7' }}>
-        En <strong>Tucumán</strong> —como en gran parte del país— la demanda de salud mental supera ampliamente la capacidad de respuesta del sistema tradicional. Al mismo tiempo, miles de estudiantes de Psicología transitan una formación fuertemente teórica, con escasos espacios para entrenar habilidades de escucha activa.
-      </p>
-      <p className="fw-semibold color-dark-green">
-        Psico-Vínculo surge para unir esas dos realidades, con una convicción clara: <span className="text-highlight">La tecnología no debe reemplazar el vínculo humano, debe ser el medio para cuidarlo y multiplicarlo.</span>
-      </p>
-    </Col>
+      <Container className="py-5 my-5">
+        <Row className="align-items-center g-5">
+          {/* Lado Izquierdo: Texto */}
+          <Col lg={7}>
+            <small className="text-uppercase text-success fw-bold">Por qué Psico-Vínculo</small>
+            <h2 className="hero-title fs-1 mt-2 mb-4">
+              Un puente entre quienes necesitan hablar y quienes aprenden a escuchar
+            </h2>
+            <p className="text-muted mb-4" style={{ fontSize: '1.1rem', lineHeight: '1.7' }}>
+              En <strong>Tucumán</strong> —como en gran parte del país— la demanda de salud mental supera ampliamente la capacidad de respuesta del sistema tradicional. Al mismo tiempo, miles de estudiantes de Psicología transitan una formación fuertemente teórica, con escasos espacios para entrenar habilidades de escucha activa.
+            </p>
+            <p className="fw-semibold color-dark-green">
+              Psico-Vínculo surge para unir esas dos realidades, con una convicción clara: <span className="text-highlight">La tecnología no debe reemplazar el vínculo humano, debe ser el medio para cuidarlo y multiplicarlo.</span>
+            </p>
+          </Col>
 
-    {/* Lado Derecho: Tarjeta de Beneficios */}
-    <Col lg={5}>
-      <div className="benefits-card shadow-lg p-4 p-md-5 border-0 rounded-4 bg-white">
-        <h4 className="fw-bold mb-4" style={{ color: '#1F2937' }}>Lo que ofrecemos</h4>
-        <ul className="list-unstyled mb-0">
-          {[
-            "Acceso gratuito y confidencial",
-            "Posibilidad de anonimato",
-            "Lenguaje empático y cercano",
-            "Supervisión profesional permanente",
-            "Formación ética de estudiantes",
-            "Protocolos claros de derivación"
-          ].map((item, index) => (
-            <li key={index} className="d-flex align-items-start mb-3">
-              <span className="me-3 text-success fs-5">✓</span>
-              <span className="text-muted fw-medium">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </Col>
-  </Row>
-</Container>
+          {/* Lado Derecho: Tarjeta de Beneficios */}
+          <Col lg={5}>
+            <div className="benefits-card shadow-lg p-4 p-md-5 border-0 rounded-4 bg-white">
+              <h4 className="fw-bold mb-4" style={{ color: '#1F2937' }}>Lo que ofrecemos</h4>
+              <ul className="list-unstyled mb-0">
+                {[
+                  "Acceso gratuito y confidencial",
+                  "Posibilidad de anonimato",
+                  "Lenguaje empático y cercano",
+                  "Supervisión profesional permanente",
+                  "Formación ética de estudiantes",
+                  "Protocolos claros de derivación"
+                ].map((item, index) => (
+                  <li key={index} className="d-flex align-items-start mb-3">
+                    <span className="me-3 text-success fs-5">✓</span>
+                    <span className="text-muted fw-medium">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Col>
+        </Row>
+      </Container>
 
       {/* 3. ARQUITECTURA DE ROLES (Tarjetas Pastel) */}
       <Container className="py-5">
@@ -103,7 +109,6 @@ const HomePage = () => {
           <h2 className="fw-bold mt-2">Un sistema que cuida</h2>
         </div>
         
-        {/* Usamos row-cols-lg-5 para que entren los 5 en fila en pantallas grandes */}
         <Row className="row-cols-1 row-cols-md-3 row-cols-lg-5 g-3">
           <Col>
             <div className="role-card bg-role-user">
@@ -150,7 +155,13 @@ const HomePage = () => {
           <p className="text-muted mb-4">No estás solo/a. Psico-Vínculo te ofrece un espacio seguro.</p>
           <div className="d-flex justify-content-center gap-3">
             <Link to="/chat"><Button className="btn-primary-custom">Comenzar ahora →</Button></Link>
-            <Button className="bg-white border text-dark px-4 py-2 rounded-3">Ya tengo cuenta</Button>
+            {/* 🔥 BOTÓN CONECTADO AL LOGIN 👇 */}
+            <Button 
+              className="bg-white border text-dark px-4 py-2 rounded-3" 
+              onClick={() => navigate('/login')}
+            >
+              Ya tengo cuenta
+            </Button>
           </div>
         </Container>
       </div>
