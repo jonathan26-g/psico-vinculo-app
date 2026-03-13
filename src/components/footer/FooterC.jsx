@@ -9,7 +9,7 @@ const Footer = () => {
         <Row>
           {/* Columna 1: Marca y Misión */}
           <Col md={4} className="mb-3">
-            <h5 className="fw-bold" style={{ color: '#4A8B71' }}>👐 Acompañar</h5>
+            <h5 className="fw-bold" style={{ color: '#4A8B71' }}>👐 ACOMPAÑAR</h5>
             <p className="small text-muted">
               Dispositivo psicoeducativo de contención emocional y formación profesional.
               Conectamos a quienes necesitan hablar con quienes aprenden a escuchar.
@@ -39,14 +39,14 @@ const Footer = () => {
            <Col md={4} className="mb-3 text-md-end">
              <small className="text-muted d-block mb-2">Síguenos en</small>
              {/* Aquí podrías poner íconos de redes sociales luego */}
-             <span className="fw-bold text-muted">@psicovinculo</span>
+             <span className="fw-bold text-muted">@red.acompanar</span>
            </Col>
         </Row>
 
         {/* Copyright */}
         <div className="text-center pt-4 border-top mt-3">
             <small className="text-muted">
-              &copy; {new Date().getFullYear()} Psico-Vínculo (Acompañar). Todos los derechos reservados.
+              &copy; {new Date().getFullYear()} ACOMPAÑAR. Todos los derechos reservados.
             </small>
         </div>
       </Container>

@@ -1,13 +1,11 @@
 import React from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom'; // 🔥 Agregamos useNavigate aquí
+import { Link, useNavigate } from 'react-router-dom';
 
-// --- ESTA LÍNEA ES LA QUE FALTA ---
 import './HomePage.css'; 
-// -------
 
 const HomePage = () => {
-  const navigate = useNavigate(); // 🔥 Inicializamos el navegador
+  const navigate = useNavigate();
 
   return (
     <div className="page-background">
@@ -27,7 +25,6 @@ const HomePage = () => {
         </p>
         <div className="d-flex justify-content-center gap-3">
           <Link to="/register"><Button className="btn-primary-custom">Comenzar ahora →</Button></Link>
-          {/* 🔥 BOTÓN CONECTADO A SOBRE NOSOTROS 👇 */}
           <Button className="btn-outline-custom" onClick={() => navigate('/sobre-nosotros')}>
             Conocer más
           </Button>
@@ -61,12 +58,12 @@ const HomePage = () => {
         </Row>
       </Container>
 
-      {/* NUEVA SECCIÓN: POR QUÉ PSICO-VÍNCULO */}
+      {/* NUEVA SECCIÓN: POR QUÉ ACOMPAÑAR */}
       <Container className="py-5 my-5">
         <Row className="align-items-center g-5">
           {/* Lado Izquierdo: Texto */}
           <Col lg={7}>
-            <small className="text-uppercase text-success fw-bold">Por qué Psico-Vínculo</small>
+            <small className="text-uppercase text-success fw-bold">Por qué Acompañar</small>
             <h2 className="hero-title fs-1 mt-2 mb-4">
               Un puente entre quienes necesitan hablar y quienes aprenden a escuchar
             </h2>
@@ -74,7 +71,7 @@ const HomePage = () => {
               En <strong>Tucumán</strong> —como en gran parte del país— la demanda de salud mental supera ampliamente la capacidad de respuesta del sistema tradicional. Al mismo tiempo, miles de estudiantes de Psicología transitan una formación fuertemente teórica, con escasos espacios para entrenar habilidades de escucha activa.
             </p>
             <p className="fw-semibold color-dark-green">
-              Psico-Vínculo surge para unir esas dos realidades, con una convicción clara: <span className="text-highlight">La tecnología no debe reemplazar el vínculo humano, debe ser el medio para cuidarlo y multiplicarlo.</span>
+              La plataforma ACOMPAÑAR surge para unir esas dos realidades, con una convicción clara: <span className="text-highlight">La tecnología no debe reemplazar el vínculo humano, debe ser el medio para cuidarlo y multiplicarlo.</span>
             </p>
           </Col>
 
@@ -152,10 +149,9 @@ const HomePage = () => {
       <div className="py-5 mt-5" style={{ backgroundColor: '#F9FAFB' }}>
         <Container className="text-center">
           <h2 className="fw-bold mb-3">¿Necesitás un espacio para hablar?</h2>
-          <p className="text-muted mb-4">No estás solo/a. Psico-Vínculo te ofrece un espacio seguro.</p>
+          <p className="text-muted mb-4">No estás solo/a. ACOMPAÑAR te ofrece un espacio seguro.</p>
           <div className="d-flex justify-content-center gap-3">
             <Link to="/chat"><Button className="btn-primary-custom">Comenzar ahora →</Button></Link>
-            {/* 🔥 BOTÓN CONECTADO AL LOGIN 👇 */}
             <Button 
               className="bg-white border text-dark px-4 py-2 rounded-3" 
               onClick={() => navigate('/login')}

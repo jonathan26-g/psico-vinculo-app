@@ -21,12 +21,14 @@ const AboutPage = () => {
         {/* Sección: El Problema y la Solución */}
         <Row className="align-items-center mb-5 pb-4 border-bottom">
           <Col lg={6} className="mb-4 mb-lg-0">
-            <h2 className="fw-bold text-dark mb-4">¿Qué es Psico-Vínculo?</h2>
+            {/* 🔥 Cambio de Nombre aquí 👇 */}
+            <h2 className="fw-bold text-dark mb-4">¿Qué es ACOMPAÑAR?</h2>
             <p className="text-secondary fs-5">
-              Nacimos de observar dos realidades contrastantes: por un lado, miles de personas necesitan un espacio seguro para ser escuchadas; por el otro, estudiantes avanzados de psicología requieren horas de práctica real para graduarse.
+              Nacimos de observar dos realidades contrastantes: por un lado, miles de personas necesitan un espacio seguro para ser escuchadas; por el otro, estudiantes avanzados de psicología requieren horas de práctica clínica para graduarse.
             </p>
             <p className="text-secondary fs-5 mb-0">
-              <strong>Psico-Vínculo es el puente tecnológico entre ambos.</strong> Una plataforma institucional de Tele-asistencia y Extensión Universitaria donde el aprendizaje académico y la responsabilidad social se encuentran.
+              {/* 🔥 Cambio de Nombre aquí 👇 */}
+              <strong>ACOMPAÑAR es el puente tecnológico entre ambos.</strong> Una plataforma institucional de Tele-asistencia y Extensión Universitaria donde el aprendizaje académico y la responsabilidad social se encuentran.
             </p>
           </Col>
           <Col lg={6}>
@@ -40,6 +42,18 @@ const AboutPage = () => {
               </div>
             </Card>
           </Col>
+        </Row>
+
+        {/* 🔥 NUEVA SECCIÓN: Aclaración Académica (Pasantías) 👇 */}
+        <Row className="mb-5 pb-4 border-bottom justify-content-center">
+            <Col lg={10}>
+                <div className="bg-warning bg-opacity-10 border border-warning rounded-4 p-4 text-center">
+                    <h5 className="fw-bold text-dark mb-3">⚠️ Alcance Académico y Prácticas Profesionales</h5>
+                    <p className="text-muted mb-0">
+                        ACOMPAÑAR es un dispositivo tecnológico de extensión universitaria diseñado para el entrenamiento en tele-asistencia. <strong>Bajo ninguna circunstancia esta plataforma busca reemplazar o sustituir las pasantías presenciales ni las Prácticas Profesionales Supervisadas (PPS) tradicionales</strong> en instituciones de salud. Funciona como un complemento innovador para desarrollar habilidades de ciberpsicología y primera escucha antes de enfrentarse al consultorio físico.
+                    </p>
+                </div>
+            </Col>
         </Row>
 
         {/* Sección: Metodología y Cámara Gesell */}
@@ -59,7 +73,7 @@ const AboutPage = () => {
               <div className="display-4 mb-3">🎓</div>
               <h5 className="fw-bold">Práctica Supervisada</h5>
               <p className="text-muted small">
-                Los alumnos de último año aplican sus conocimientos teóricos en escenarios reales, redactando informes clínicos y desarrollando el "ojo clínico" bajo tutela.
+                Los alumnos aplican sus conocimientos teóricos en escenarios reales, redactando informes clínicos y desarrollando el "ojo clínico" bajo estricta tutela docente.
               </p>
             </Card>
           </Col>

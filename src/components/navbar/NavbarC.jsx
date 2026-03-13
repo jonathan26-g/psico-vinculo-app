@@ -64,7 +64,8 @@ const NavbarC = () => {
       <Container>
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
           <span style={{ fontSize: '1.5rem' }}>👐</span> 
-          <span className="fw-bold text-success">Psico-Vínculo</span>
+          {/* Antes decía: <span className="fw-bold text-success">Psico-Vínculo</span> */}
+          <span className="fw-bold text-success">ACOMPAÑAR</span>
         </Navbar.Brand>
 
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
